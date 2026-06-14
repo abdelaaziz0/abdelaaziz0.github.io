@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Abdelaaziz Belkhair | Pentest Web & Active Directory</title>
+  <meta name="description"
+    content="Portfolio d'Abdelaaziz Belkhair, élève-ingénieur cybersécurité actuellement en stage chez Orange Cyberdefense et en recherche d'un CDI en pentest Web ou Active Directory.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
+    integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg=="
+    crossorigin="anonymous" referrerpolicy="no-referrer">
+  <link rel="stylesheet" href="writeups/writeup-style.css">
+  <link rel="stylesheet" href="assets/css/index-alt.css">
+</head>
+
+<body>
+  <nav class="home-nav" aria-label="Navigation principale">
+    <a class="nav-logo" href="index.html">AB_</a>
+    <ul class="nav-links">
+      <li><a href="#snapshot">Profil</a></li>
+      <li><a href="#work">Travail</a></li>
+      <li><a href="#writeups">Analyses</a></li>
+      <li><a href="#experience">Expérience</a></li>
+      <li><a href="#contact">Contact</a></li>
+      <li><a href="cv.pdf" download>CV</a></li>
+    </ul>
+  </nav>
+
+  <main>
+    <section class="hero-home" id="home">
+      <div class="hero-inner">
+        <span class="hero-eyebrow">Pentest Web / Active Directory / Stage PFE Orange Cyberdefense</span>
+        <h1 class="hero-title">Abdelaaziz Belkhair</h1>
+        <p class="hero-copy">
+          Je cherche un CDI en pentest Web ou Active Directory à l'issue de mon stage PFE chez Orange
+          Cyberdefense à Marseille. Ce portfolio met en avant des analyses techniques détaillées, des outils d'audit
+          et ma manière de raisonner pendant une exploitation.
+        </p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="#work"><i class="fas fa-terminal"></i> Voir le travail</a>
+          <a class="button" href="#writeups"><i class="fas fa-flag"></i> Analyses techniques</a>
+          <a class="button" href="#contact"><i class="fas fa-envelope"></i> Me contacter</a>
+        </div>
+        <div class="challenge-stats hero-stats">
+          <div class="stat-item"><span class="stat-value">PFE</span><span class="stat-label">Orange Cyberdefense</span></div>
+          <div class="stat-item"><span class="stat-value">4</span><span class="stat-label">Analyses détaillées</span></div>
+          <div class="stat-item"><span class="stat-value">AD</span><span class="stat-label">Outillage &amp; labs</span></div>
+          <div class="stat-item"><span class="stat-value">945/990</span><span class="stat-label">TOEIC</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page-section" id="snapshot">
+      <div class="section-head">
+        <div>
+          <span class="section-kicker">En bref</span>
+          <h2>Profil en bref</h2>
+        </div>
+        <p>
+          Quatre repères rapides pour comprendre ce que j'apporte dans une équipe pentest.
+        </p>
+      </div>
+      <div class="proof-grid">
+        <article class="proof-card">
+          <span class="mini-tag">Stage actuel</span>
+          <strong>Pentest web</strong>
+          <p>Stage de 6 mois à Marseille en pentest web, avec contribution aux phases de reconnaissance,
+            validation d'impact, rédaction de constats et recommandations.</p>
+        </article>
+        <article class="proof-card">
+          <span class="mini-tag">Analyses détaillées</span>
+          <strong>Chaînes d'exploitation documentées</strong>
+          <p>Articles HTB structurés autour de la lecture de code, des hypothèses testées et de la remédiation.</p>
+        </article>
+        <article class="proof-card">
+          <span class="mini-tag">Outils publiés</span>
+          <strong>Outils d'audit</strong>
+          <p>Scripts et projets orientés lab, parsing AD et analyse de chemins de privilèges.</p>
+        </article>
+        <article class="proof-card">
+          <span class="mini-tag">Méthode de travail</span>
+          <strong>Impact et cause racine</strong>
+          <p>Chaque constat doit relier une observation vérifiable, un impact technique ou métier, et une correction réaliste.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="page-section" id="about">
+      <div class="section-head">
+        <div>
+          <span class="section-kicker">Profil</span>
+          <h2>Pentest Web et Active Directory avec une logique d'audit</h2>
+        </div>
+        <p>
+          Dernière année à l'ENSEIRB-MATMECA, Bordeaux INP. Je privilégie les audits où l'on peut relier
+          observation, impact et correction.
+        </p>
+      </div>
+      <div class="split">
+        <div>
+          <p>
+            Je travaille surtout sur des chaînes d'exploitation Web et Active Directory: comprendre le
+            comportement d'une cible, isoler une hypothèse, prouver l'impact proprement, puis documenter
+            la cause racine et la correction.
+          </p>
+          <p>
+            J'aime documenter les chemins complets: pas seulement le bug isolé, mais le raisonnement,
+            les impasses, les signaux faibles et le correctif réaliste.
+          </p>
+          <div class="card-grid">
+            <article class="feature-card">
+              <h3>Pentest Web</h3>
+              <p>Analyse de comportement applicatif, validation d'impact, causes racines et remédiations.</p>
+            </article>
+            <article class="feature-card">
+              <h3>Active Directory</h3>
+              <p>Modélisation de chemins de privilèges, artefacts autorisés et scénarios de lab cadrés.</p>
+            </article>
+            <article class="feature-card">
+              <h3>Ingénierie</h3>
+              <p>Python, PowerShell, parsing de données, automatisation de labs et outillage d'audit.</p>
+            </article>
+          </div>
+        </div>
+        <aside class="panel profile-frame">
+          <img src="azaz.webp" alt="Portrait d'Abdelaaziz Belkhair" loading="lazy">
+          <div class="profile-caption">Marseille, France / Stage PFE Orange Cyberdefense</div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="page-section" id="work">
+      <div class="section-head">
+        <div>
+          <span class="section-kicker">Travail sélectionné</span>
+          <h2>Outils utiles pour une équipe pentest</h2>
+        </div>
+        <p>Une sélection resserrée autour du pentest Web, Active Directory et de l'outillage d'audit.</p>
+      </div>
+      <div class="project-grid">
+        <article class="project-card-alt">
+          <h3>ntds2bh</h3>
+          <p>Outil d'analyse offline qui transforme des exports Active Directory autorisés en JSON compatibles BloodHound, afin d'étudier les chemins de privilèges.</p>
+          <div class="tag-row">
+            <span class="mini-tag">AD</span><span class="mini-tag">BloodHound</span><span class="mini-tag">Page technique</span>
+          </div>
+          <a href="projects/ntds2bh.html">Présentation technique</a>
+        </article>
+        <article class="project-card-alt">
+          <h3>AD CTF Builder</h3>
+          <p>Générateur PowerShell d'environnements Active Directory de lab à partir d'un fichier JSON: utilisateurs, groupes, machines et scénarios contrôlés.</p>
+          <div class="tag-row">
+            <span class="mini-tag">PowerShell</span><span class="mini-tag">Lab AD</span><span class="mini-tag">Page technique</span>
+          </div>
+          <a href="projects/ad-ctf-builder.html">Présentation technique</a>
+        </article>
+        <article class="project-card-alt">
+          <h3>Net-Aware Auth Auditor</h3>
+          <p>Outil de reconnaissance AD orienté audit interne: collecte de signaux Kerberos/LDAP, repérage de comptes de service candidats et priorisation des vérifications manuelles.</p>
+          <div class="tag-row">
+            <span class="mini-tag">Repo lié</span><span class="mini-tag">Scapy</span><span class="mini-tag">AD</span>
+          </div>
+          <div class="project-links-alt">
+            <a class="icon-link" href="https://github.com/abdelaaziz0/Net-Aware-Aut-Auditor" target="_blank"
+              rel="noopener" aria-label="GitHub Net-Aware Auth Auditor"><i class="fab fa-github"></i></a>
+          </div>
+        </article>
+        <article class="project-card-alt">
+          <h3>SAST hybride</h3>
+          <p>Moteur d'analyse statique conçu pendant mon stage R&D: détection OWASP, priorisation des résultats et génération de correctifs assistée par LLM.</p>
+          <div class="tag-row">
+            <span class="mini-tag">SAST</span><span class="mini-tag">Stage R&D</span>
+          </div>
+        </article>
+      </div>
+      <div class="hero-actions">
+        <a class="button" href="projects.html"><i class="fas fa-folder-open"></i> Tous les projets</a>
+      </div>
+    </section>
+
+    <section class="page-section" id="writeups">
+      <div class="section-head">
+        <div>
+          <span class="section-kicker">Analyses techniques sélectionnées</span>
+          <h2>Chaînes d'exploitation documentées</h2>
+        </div>
+        <p>Ces articles montrent le raisonnement complet: lecture de code, hypothèses, échecs, exploitation et remédiation.</p>
+      </div>
+      <div class="article-grid">
+        <article class="article-card">
+          <h3>Resizer - HTB CTF</h3>
+          <p>Une écriture de fichier apparemment limitée devient exploitable après analyse du mécanisme d'import Python utilisé par l'application.</p>
+          <div class="tag-row"><span class="mini-tag">2026-04-20</span><span class="mini-tag">Flask</span></div>
+          <a href="writeups/resizer.html">Lire</a>
+        </article>
+        <article class="article-card">
+          <h3>DeSynth Recruit - HTB CTF</h3>
+          <p>Un comportement HTTP ambigu devient une exécution de code après corrélation entre serveur, navigateur admin et console de debug.</p>
+          <div class="tag-row"><span class="mini-tag">2026-02-19</span><span class="mini-tag">RCE</span></div>
+          <a href="writeups/desynth-recruit.html">Lire</a>
+        </article>
+        <article class="article-card">
+          <h3>Intergalactic Bounty - HTB CTF</h3>
+          <p>Une suite de défauts applicatifs mène d'un compte contrôlé à une exécution serveur, avec cause racine et corrections.</p>
+          <div class="tag-row"><span class="mini-tag">2026-02-16</span><span class="mini-tag">Node.js</span></div>
+          <a href="writeups/intergalactic-bounty.html">Lire</a>
+        </article>
+        <article class="article-card">
+          <h3>Pirate - HTB Writeup</h3>
+          <p>Chaîne Active Directory complète depuis une configuration héritée jusqu'à une prise de contrôle du domaine, avec explication des erreurs à chaque étape.</p>
+          <div class="tag-row"><span class="mini-tag">Hard</span><span class="mini-tag">Windows AD</span></div>
+          <a href="writeups/HTB-Pirate-Writeup.html">Lire</a>
+        </article>
+      </div>
+      <div class="hero-actions">
+        <a class="button" href="writeups.html"><i class="fas fa-flag"></i> Toutes les analyses</a>
+      </div>
+    </section>
+
+    <section class="page-section" id="experience">
+      <div class="section-head">
+        <div>
+          <span class="section-kicker">Parcours</span>
+          <h2>Formation et expérience</h2>
+        </div>
+        <p>Un profil ingénieur avec un vrai biais terrain: construire, tester, mesurer, corriger.</p>
+      </div>
+      <div class="timeline-grid">
+        <article class="timeline-card">
+          <span class="mini-tag">Stage PFE 6 mois</span>
+          <h3>Orange Cyberdefense - Marseille</h3>
+          <p>Contribution aux phases de reconnaissance, validation d'impact, rédaction de constats et recommandations,
+            avec développement de <code>ntds2bh</code>, un outil qui transforme des exports Active Directory autorisés
+            en JSON compatibles BloodHound.</p>
+        </article>
+        <article class="timeline-card">
+          <span class="mini-tag">Juin - Septembre 2025</span>
+          <h3>Stage Ingénieur R&D - AM Advisory</h3>
+          <p>Moteur SAST hybride, analyse statique, CodeBERT, Phi, détection OWASP et correctifs LLM.</p>
+        </article>
+        <article class="timeline-card">
+          <span class="mini-tag">2023 - 2026</span>
+          <h3>ENSEIRB-MATMECA, Bordeaux INP</h3>
+          <p>Ingénieur télécommunications, spécialisation cybersécurité, crypto, réseaux et système.</p>
+        </article>
+        <article class="timeline-card">
+          <span class="mini-tag">2021 - 2023</span>
+          <h3>CPGE MPSI/MP</h3>
+          <p>Formation intensive en mathématiques et physique, base de rigueur utile en sécurité.</p>
+        </article>
+        <article class="timeline-card">
+          <span class="mini-tag">Labs continus</span>
+          <h3>HackTheBox / TryHackMe</h3>
+          <p>Pratique régulière sur AD, web exploitation, red team et chaînes multi-étapes.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="page-section" id="certifications">
+      <div class="section-head">
+        <div>
+          <span class="section-kicker">Formations</span>
+          <h2>Formations et certifications principales</h2>
+        </div>
+        <p>Sélection courte des parcours et attestations les plus lisibles.</p>
+      </div>
+      <div class="certs-grid-alt">
+        <article class="cert-card-old">
+          <img src="certifs/tryhackme-Red-Teaming.jpg" alt="TryHackMe Red Teaming" loading="lazy">
+          <div class="cert-info">
+            <h3>Red Teaming</h3>
+            <p>TryHackMe</p>
+          </div>
+        </article>
+        <article class="cert-card-old">
+          <img src="certifs/Tryhackme-Offensive-Pentesting.jpg" alt="TryHackMe Offensive Pentesting" loading="lazy">
+          <div class="cert-info">
+            <h3>Offensive Pentesting</h3>
+            <p>TryHackMe</p>
+          </div>
+        </article>
+        <article class="cert-card-old">
+          <img src="certifs/tryhackme_web_application_pentesting.jpg" alt="TryHackMe Web Application Pentesting"
+            loading="lazy">
+          <div class="cert-info">
+            <h3>Web App Pentesting</h3>
+            <p>TryHackMe</p>
+          </div>
+        </article>
+        <article class="cert-card-old">
+          <img src="certifs/HTB_web_pentester_job_role_path.png" alt="HackTheBox Web Pentester Job Role Path"
+            loading="lazy">
+          <div class="cert-info">
+            <h3>Web Pentester Path</h3>
+            <p>HackTheBox</p>
+          </div>
+        </article>
+        <article class="cert-card-old">
+          <img src="certifs/toeic.png" alt="TOEIC Certificate" loading="lazy">
+          <div class="cert-info">
+            <h3>TOEIC 945/990</h3>
+            <p>Niveau C1</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="page-section" id="contact">
+      <div class="section-head">
+        <div>
+          <span class="section-kicker">Contact</span>
+          <h2>Me contacter</h2>
+        </div>
+        <p>Email pour le premier contact, LinkedIn pour le contexte, GitHub pour les projets publics.</p>
+      </div>
+      <div class="contact-grid-alt">
+        <article class="contact-card">
+          <i class="fas fa-envelope"></i>
+          <h3>Email</h3>
+          <p><a href="mailto:abelkhair002@bordeaux-inp.fr">abelkhair002@bordeaux-inp.fr</a></p>
+        </article>
+        <article class="contact-card contact-logo-card">
+          <a class="icon-link" href="https://www.linkedin.com/in/abdelaaziz-belkhair-12502024b/" target="_blank"
+            rel="noopener" aria-label="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
+          <h3>LinkedIn</h3>
+          <p><a href="https://www.linkedin.com/in/abdelaaziz-belkhair-12502024b/" target="_blank"
+              rel="noopener">abdelaaziz-belkhair</a></p>
+        </article>
+        <article class="contact-card contact-logo-card">
+          <a class="icon-link" href="https://github.com/abdelaaziz0" target="_blank" rel="noopener"
+            aria-label="GitHub"><i class="fab fa-github"></i></a>
+          <h3>GitHub</h3>
+          <p><a href="https://github.com/abdelaaziz0" target="_blank" rel="noopener">github.com/abdelaaziz0</a></p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer-alt">
+    &copy; 2026 Abdelaaziz Belkhair
+  </footer>
+</body>
+
+</html>
