@@ -386,7 +386,7 @@ body {
 }
 
 .proof-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .proof-card {
@@ -415,7 +415,7 @@ body {
   min-height: 145px;
 }
 
-.contact-card > i {
+.contact-card>i {
   color: var(--accent-2);
   margin-bottom: 1rem;
 }

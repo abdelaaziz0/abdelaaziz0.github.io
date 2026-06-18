@@ -50,8 +50,9 @@
         <h1 class="hero-title">Abdelaaziz Belkhair</h1>
         <p class="hero-copy">
           Je cherche un CDI en pentest Web ou Active Directory à l'issue de mon stage PFE chez Orange
-          Cyberdefense à Marseille. Ce portfolio met en avant des analyses techniques détaillées, des outils d'audit
-          et ma manière de raisonner pendant une exploitation.
+          Cyberdefense. Ce portfolio met en avant des writeups détaillées, ce que je sais faire et des
+          outils d'audit
+          que j'ai créé.
         </p>
         <div class="hero-actions">
           <a class="button button-primary" href="#work"><i class="fas fa-terminal"></i> Voir le travail</a>
@@ -82,25 +83,18 @@
           <span class="mini-tag">Stage actuel</span>
           <strong>Pentest web</strong>
           <p>Stage de 6 mois à Marseille en pentest web, avec recherche active de vulnérabilités,
-            exploitation contrôlée, validation d'impact et rédaction de constats techniques.</p>
+            exploitation, validation d'impact et rédaction de rapports techniques.</p>
         </article>
         <article class="proof-card">
-          <span class="mini-tag">Analyses détaillées</span>
+          <span class="mini-tag">Writeups détaillées</span>
           <strong>Writeups</strong>
-          <p>Analyses HTB couvrant l'exploitation de boxes, la lecture de code,
+          <p>Writeups HTB/Tryhackme couvrant l'exploitation de boxes, audit de code,
             les hypothèses testées et la construction de chaînes d'attaque.</p>
         </article>
         <article class="proof-card">
           <span class="mini-tag">Outils publiés</span>
           <strong>Outils d'audit</strong>
-          <p>Outillage offensif pour cartographie AD, génération de labs, préparation de chemins d'attaque
-            et validation d'impact.</p>
-        </article>
-        <article class="proof-card">
-          <span class="mini-tag">Méthode de travail</span>
-          <strong>Impact et cause racine</strong>
-          <p>Chaque constat doit relier une observation vérifiable, une primitive exploitable,
-            un impact concret et un chemin d'attaque reproductible.</p>
+          <p>Outillage offensif pour AD, génération de labs.</p>
         </article>
       </div>
     </section>
@@ -109,24 +103,20 @@
       <div class="section-head">
         <div>
           <span class="section-kicker">Profil</span>
-          <h2>Pentest Web et Active Directory avec une logique d'audit</h2>
+          <h2>Pentest Web et Active Directory</h2>
         </div>
       </div>
       <div class="split">
         <div>
           <p>
             Je travaille surtout sur des chaînes d'exploitation Web et Active Directory: comprendre le
-            comportement d'une cible, isoler une hypothèse, prouver l'impact proprement, puis documenter
-            une chaîne d'attaque reproductible.
-          </p>
-          <p>
-            J'aime documenter les chemins complets: pas seulement le bug isolé, mais le raisonnement,
-            l'énumération, les impasses, les pivots et la preuve d'impact.
+            comportement d'une cible, isoler une hypothèse, prouver l'impact, puis documenter
+            la chaîne d'attaque reproductible.
           </p>
           <div class="card-grid">
             <article class="feature-card">
               <h3>Pentest Web</h3>
-              <p>Recherche de vulnérabilités, exploitation contrôlée, analyse de comportement applicatif,
+              <p>Recherche de vulnérabilités, exploitation, analyse de comportement applicatif,
                 validation d'impact et chaînage.</p>
             </article>
             <article class="feature-card">
@@ -136,7 +126,8 @@
             </article>
             <article class="feature-card">
               <h3>Ingénierie</h3>
-              <p>Python, PowerShell, automatisation de labs AD, exploitation contrôlée et outillage d'audit.</p>
+              <p>Python, PowerShell, automatisation de création labs AD, Développement d'exploits et outillage d'audit.
+              </p>
             </article>
           </div>
         </div>
@@ -150,14 +141,14 @@
       <div class="section-head">
         <div>
           <span class="section-kicker">Travail sélectionné</span>
-          <h2>Outils utiles pour une équipe pentest</h2>
+          <h2>Outils utiles pour pentest</h2>
         </div>
       </div>
       <div class="project-grid">
         <article class="project-card-alt">
           <h3>ntds2bh</h3>
           <p>Outil d'analyse offline qui transforme une base de données Active Directory (ntds.dit) en JSONs compatibles
-            BloodHound, afin d'étudier les chemins de privilèges.</p>
+            BloodHound, afin d'étudier les chemins de privilèges. (Outil interne)</p>
           <div class="tag-row">
             <span class="mini-tag">AD</span><span class="mini-tag">BloodHound</span><span class="mini-tag">Page
               technique</span>
@@ -178,7 +169,7 @@
         <article class="project-card-alt">
           <h3>ADBuilder</h3>
           <p>Générateur PowerShell d'environnements Active Directory de lab à partir d'un fichier JSON: utilisateurs,
-            groupes, machines et scénarios contrôlés.</p>
+            groupes, machines et scénarios d'attaques avec un moteur de génération de vulnérabilités.</p>
           <div class="tag-row">
             <span class="mini-tag">PowerShell</span><span class="mini-tag">Lab AD</span><span class="mini-tag">Page
               technique</span>
@@ -212,8 +203,9 @@
         </article>
         <article class="project-card-alt">
           <h3>Kerbrutal</h3>
-          <p>Modernisation de Kerbrute : mutation de noms AD, mode OPSEC (shuffle + jitter), backoff adaptatif
-            anti-lockout et downgrade RC4 pour AS-REP roasting.</p>
+          <p>Modernisation de Kerbrute : mutation de noms AD, transport SOCKS5, reprise HMAC, JSONL, mode OPSEC renforcé
+            avec shuffle, jitter, scheduler global, backoff adaptatif anti-lockout, budgets persistants par utilisateur,
+            dry-run d’audit, circuit breaker et downgrade RC4 pour AS-REP roasting.</p>
           <div class="tag-row">
             <span class="mini-tag">Go</span><span class="mini-tag">Kerberos</span><span class="mini-tag">AD</span>
           </div>
@@ -231,7 +223,7 @@
     <section class="page-section" id="writeups">
       <div class="section-head">
         <div>
-          <span class="section-kicker">Analyses techniques sélectionnées</span>
+          <span class="section-kicker">Writeups sélectionnées</span>
           <h2>Writeups</h2>
         </div>
       </div>
@@ -317,9 +309,9 @@
       <div class="timeline-grid">
         <article class="timeline-card">
           <span class="mini-tag">Stage PFE 6 mois</span>
-          <h3>Orange Cyberdefense - Marseille</h3>
-          <p>Contribution directe à des missions de pentest web: recherche de vulnérabilités, identification
-            de RCE et d'IDOR, exploitation contrôlée, validation d'impact et rédaction de constats techniques.
+          <h3>Orange Cyberdefense</h3>
+          <p>Contribution directe à des missions de pentest web: recherche de vulnérabilités, exploitation, validation
+            d'impact et rédaction de constats techniques.
             Développement de
             <code>ntds2bh</code>, un outil qui transforme des exports Active Directory autorisés en JSON compatibles
             BloodHound.
@@ -333,12 +325,12 @@
         <article class="timeline-card">
           <span class="mini-tag">2023 - 2026</span>
           <h3>ENSEIRB-MATMECA, Bordeaux INP</h3>
-          <p>Ingénieur télécommunications, spécialisation cybersécurité, crypto, réseaux et système.</p>
+          <p>Ingénieur télécommunications, spécialisation sécurité, crypto, réseaux et système.</p>
         </article>
         <article class="timeline-card">
           <span class="mini-tag">2021 - 2023</span>
           <h3>CPGE MPSI/MP</h3>
-          <p>Formation intensive en mathématiques et physique, base de rigueur utile en sécurité.</p>
+          <p>Formation intensive en mathématiques et physique.</p>
         </article>
         <article class="timeline-card">
           <span class="mini-tag">Labs continus</span>

