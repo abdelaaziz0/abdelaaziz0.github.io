@@ -94,7 +94,7 @@
                     </div>
                 </div>
 
-                <h2>Outils essentiels</h2>
+                <h2>Outils à garder sous la main</h2>
                 <div class="tool-grid">
                     <div class="tool-card">
                         <i class="fas fa-project-diagram"></i>
@@ -129,8 +129,7 @@
                 </div>
 
                 <h2>Phase 1 : Énumération Active Directory</h2>
-                <p>L'énumération est cruciale. Un utilisateur de domaine standard suffit pour cartographier l'ensemble
-                    de l'AD.</p>
+                <p>Un utilisateur de domaine standard suffit pour cartographier l'intégralité de l'AD. C'est la première chose à faire, avant tout le reste.</p>
 
                 <h3>Collecte BloodHound</h3>
                 <pre><code># SharpHound (collector .NET)
@@ -175,7 +174,7 @@ ldapsearch -x -H ldap://192.168.1.1 -D "user@corp.local" -w '&lt;password&gt;' \
     -b "DC=corp,DC=local" "(&(objectClass=user)(servicePrincipalName=*))" samAccountName servicePrincipalName</code></pre>
 
                 <h2>Phase 2 : Attaques Kerberos</h2>
-                <p>Kerberos est le protocole d'authentification d'AD. Ses faiblesses de conception permettent plusieurs
+                <p>Kerberos est le protocole d'authentification d'AD. Ses faiblesses de conception ouvrent plusieurs
                     attaques dévastatrices.</p>
 
                 <table class="mitre-table">
@@ -246,7 +245,7 @@ hashcat -m 18200 asrep.txt /usr/share/wordlists/rockyou.txt</code></pre>
                 </div>
 
                 <h2>Phase 3 : Abus de délégation Kerberos</h2>
-                <p>La délégation Kerberos permet à un service d'agir au nom d'un utilisateur. Mal configurée, elle offre
+                <p>La délégation Kerberos autorise un service à agir au nom d'un utilisateur. Mal configurée, elle offre
                     des chemins vers Domain Admin.</p>
 
                 <h3>Unconstrained Delegation</h3>
@@ -283,8 +282,8 @@ impacket-getST -spn cifs/target.corp.local -impersonate Administrator corp.local
                 <h3>Shadow Credentials</h3>
                 <p>Si on a <code>GenericWrite</code> ou <code>WriteProperty</code> sur l'attribut
                     <code>msDS-KeyCredentialLink</code> d'un compte, on peut lui ajouter une clé publique contrôlée
-                    par l'attaquant. On s'authentifie ensuite via PKINIT avec la clé privée correspondante — sans
-                    connaître le mot de passe du compte, et sans modifier ce mot de passe.</p>
+                    par l'attaquant. On s'authentifie ensuite via PKINIT avec la clé privée correspondante, sans
+                    connaître le mot de passe du compte et sans le modifier.</p>
 
                 <pre><code># Ajouter une Shadow Credential sur un compte cible (certipy)
 certipy shadow auto -u user@corp.local -p '&lt;password&gt;' -account target_user
@@ -308,7 +307,7 @@ certipy auth -pfx target_user.pfx -domain corp.local</code></pre>
                 <h3>Extraction gMSA (Group Managed Service Accounts)</h3>
                 <p>Les comptes gMSA ont des mots de passe rotatifs gérés par le DC. Certains groupes AD ont le
                     droit de lire le mot de passe courant via l'attribut <code>msDS-ManagedPassword</code>.
-                    Compromettre un compte membre de ces groupes permet de récupérer le NT hash gMSA directement.</p>
+                    Un compte membre compromis donne accès au NT hash gMSA directement.</p>
 
                 <pre><code># Vérifier qui peut lire le mot de passe gMSA (BloodHound)
 # Requête : (n)-[r:ReadGMSAPassword]->(m) → visualiser dans BloodHound
@@ -396,7 +395,7 @@ bloodyAD -d corp.local -u user -p '&lt;password&gt;' --host 192.168.1.1 \
                     des chemins directs vers Domain Admin via un artefact légitime : un certificat signé par la CA.</p>
 
                 <div class="info-box">
-                    <strong>ESC1 à ESC16</strong> — Les variantes couvrent les templates mal configurés (ESC1-ESC4),
+                    <strong>ESC1 à ESC16</strong> : les variantes couvrent les templates mal configurés (ESC1-ESC4),
                     les flags CA (ESC6, ESC16), les relays NTLM vers enrollment (ESC8, ESC11) et l'absence
                     d'extension de sécurité (ESC9, ESC16). Toutes aboutissent à <code>certipy auth</code> →
                     NT hash Administrator.
@@ -434,7 +433,7 @@ certipy auth -pfx administrator.pfx -dc-ip 192.168.1.1</code></pre>
                 </div>
 
                 <h2>Phase 6 : Compromission du domaine</h2>
-                <p>Une fois Domain Admin obtenu, plusieurs techniques permettent d'assurer la persistance.</p>
+                <p>Une fois Domain Admin obtenu, plusieurs techniques installent la persistance.</p>
 
                 <h3>DCSync</h3>
                 <pre><code># Extraire tous les hashes du domaine
@@ -469,7 +468,7 @@ mimikatz # misc::skeleton
                 </div>
 
                 <h2>Détection & Défense</h2>
-                <p>Connaître les indicateurs de compromission permet de mieux simuler un adversaire réaliste.</p>
+                <p>Connaître les indicateurs de compromission aide à simuler un adversaire réaliste.</p>
 
                 <table class="mitre-table">
                     <thead>

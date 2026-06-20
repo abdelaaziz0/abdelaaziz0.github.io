@@ -50,7 +50,8 @@
           <h1 class="hero-title">Writeups</h1>
         </div>
         <p>
-          Machines Active Directory en boîte noire, challenges web en boîte blanche et labs de pentest.
+          Machines Active Directory en boîte noire, challenges web en boîte blanche, labs de pentest. Du concret, avec
+          les détours qui coûtent du temps.
         </p>
       </div>
     </section>
@@ -66,25 +67,26 @@
         <article class="article-card">
           <span class="mini-tag">Hard</span>
           <h3>Checkpoint</h3>
-          <p>Restauration d'objet supprimé (mark.davies) → réutilisation de mot de passe (ou BadSuccessor) → WRITE sur
-            DevDrop → extension
-            VS Code malveillante → shell ryan.brooks → BadSuccessor → svc_deploy WinRM +
-            BackupAccess → VMkatz sur snapshot VMware → hash Administrator.</p>
+          <p>Restauration d'objet AD supprimé → mouvement latéral → supply chain attack via extension IDE → forensics mémoire VM → Administrator.</p>
           <a href="writeups/checkpoint.html">Lire</a>
         </article>
         <article class="article-card">
           <span class="mini-tag">Hard</span>
           <h3>Garfield</h3>
-          <p>scriptPath modifiable sur SYSVOL → ForceChangePassword → auto-add groupe Tier 1 → RBCD via Ligolo-ng →
-            SYSTEM RODC01 → dump krbtgt_8245 (Mimikatz) → Golden Ticket RODC → Domain Admin.</p>
+          <p>Abus d'ACL sur objet AD → ForceChangePassword → auto-ajout à un groupe privilégié → délégation Kerberos → Domain Admin.</p>
           <a href="writeups/garfield.html">Lire</a>
         </article>
         <article class="article-card">
           <span class="mini-tag">Hard</span>
           <h3>Pirate</h3>
-          <p>LDAP anonyme → compte Pre-Win2000 MS01$ → extraction gMSA double (ADCS + ADFS) → PtH WinRM → relai NTLM
-            RBCD → SYSTEM WEB01 → SPN injection + délégation contrainte Protocol Transition → DC01.</p>
+          <p>Accès LDAP anonyme → authentification héritée → extraction de compte de service → relai NTLM → délégation contrainte → Domain Admin.</p>
           <a href="writeups/pirate.html">Lire</a>
+        </article>
+        <article class="article-card">
+          <span class="mini-tag">HTB</span>
+          <h3>NanoCorp</h3>
+          <p>Capture de hash réseau via upload malveillant → crack → énumération BloodHound → abus de groupe → accès WinRM → élévation via service tiers → Administrator.</p>
+          <a href="writeups/nanocorp.html">Lire</a>
         </article>
         <article class="article-card">
           <span class="mini-tag">Medium</span>
@@ -105,8 +107,8 @@
         <article class="article-card">
           <span class="mini-tag">Insane · WIP</span>
           <h3>PingPong</h3>
-          <p>Chaîne Kerberos cross-domain (PING.HTB / PONG.HTB) en cours de complétion. Énumération et pivots documentés
-            jusqu'au dernier mouvement latéral confirmé.</p>
+          <p>Chaîne Kerberos cross-domain (PING.HTB / PONG.HTB) encore en chantier. Énumération et pivots documentés
+            jusqu'au dernier mouvement latéral validé.</p>
           <a href="writeups/pingpong.html">Lire</a>
         </article>
       </div>
@@ -145,36 +147,32 @@
         <article class="article-card">
           <span class="mini-tag">Hard</span>
           <h3>SocratesPanel</h3>
-          <p>Cache poisoning via corps GET ignoré par la clé CDN → course contre le refresh du bot admin → XSS → SSRF
-            panel Tornado → commande Redis via header → flag servi par le cache.</p>
+          <p>Empoisonnement de cache CDN → XSS via bot admin → SSRF vers panneau interne → injection de commande → flag.</p>
           <a href="writeups/socrates.html">Lire</a>
         </article>
         <article class="article-card">
           <span class="mini-tag">Medium</span>
           <h3>Interstellar</h3>
-          <p>Abus de sous-domaine pour forcer une requête SSRF → filtre contourné par redirection DNS interne → SSTI
-            Smarty en contexte back-end → lecture du flag.</p>
+          <p>SSRF via abus de sous-domaine → injection de template côté serveur → RCE → flag.</p>
           <a href="writeups/interstellar.html">Lire</a>
         </article>
         <article class="article-card">
           <span class="mini-tag">Medium</span>
           <h3>NextPath</h3>
-          <p>Regex multiline bypassée sur validation de chemin → pollution de paramètre HTTP → troncation de chemin côté
-            serveur → lecture de fichiers arbitraires.</p>
+          <p>Contournement de regex → pollution de paramètre HTTP → traversée de chemin → lecture de fichiers arbitraires.</p>
           <a href="writeups/nextpath.html">Lire</a>
         </article>
         <article class="article-card">
           <span class="mini-tag">Medium</span>
           <h3>Dusty Alleys</h3>
-          <p>Bypass de vhost Nginx par manipulation du header Host → SSRF via réflexion d'en-tête dans le sous-service
+          <p>Bypass de vhost Nginx par manipulation du header Host → SSRF via réflexion d'en-tête dans un sous-service
             interne → accès à un endpoint non exposé publiquement.</p>
           <a href="writeups/dusty-alleys.html">Lire</a>
         </article>
         <article class="article-card">
           <span class="mini-tag">Hard</span>
           <h3>Resizer</h3>
-          <p>Bypass os.path.join() Flask par chemin absolu → écriture de fractions.abi3.so dans /app → import paresseux
-            Pillow lors de Image.open() → PyInit_fractions() copie le flag vers le chemin renvoyé par send_file().</p>
+          <p>Écriture de fichier arbitraire via upload → détournement d'import Python → chargement de bibliothèque malveillante → flag.</p>
           <a href="writeups/resizer.html">Lire</a>
         </article>
       </div>

@@ -6,18 +6,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UOV (Unbalanced Oil and Vinegar) : Signatures Post-Quantiques Expliquées | Blog</title>
     <meta name="description"
-        content="Note technique sur le schéma de signature UOV : fondements mathématiques, fonctionnement, sécurité et place dans la cryptographie post-quantique.">
+        content="Note technique sur le schéma de signature UOV : bases mathématiques, fonctionnement, sécurité et place dans la cryptographie post-quantique.">
   <link rel="canonical" href="https://abdelaaziz0.github.io/blog/uov-signatures.html">
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://abdelaaziz0.github.io/blog/uov-signatures.html">
   <meta property="og:title" content="UOV (Unbalanced Oil and Vinegar) : Signatures Post-Quantiques Expliquées | Blog">
-  <meta property="og:description" content="Note technique sur le schéma de signature UOV : fondements mathématiques, fonctionnement, sécurité et place dans la cryptographie post-quantique.">
+  <meta property="og:description" content="Note technique sur le schéma de signature UOV : bases mathématiques, fonctionnement, sécurité et place dans la cryptographie post-quantique.">
   <meta property="og:image" content="https://abdelaaziz0.github.io/assets/img/profile.webp">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="UOV (Unbalanced Oil and Vinegar) : Signatures Post-Quantiques Expliquées | Blog">
-  <meta name="twitter:description" content="Note technique sur le schéma de signature UOV : fondements mathématiques, fonctionnement, sécurité et place dans la cryptographie post-quantique.">
+  <meta name="twitter:description" content="Note technique sur le schéma de signature UOV : bases mathématiques, fonctionnement, sécurité et place dans la cryptographie post-quantique.">
   <meta name="twitter:image" content="https://abdelaaziz0.github.io/assets/img/profile.webp">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
@@ -93,7 +93,7 @@
                     Vinegar) en est le représentant le plus étudié.</p>
 
                 <p>Ce schéma a survécu à plus de 25 ans de cryptanalyse. Ce n'est pas rien. Il repose sur un problème
-                    mathématique fondamentalement différent de RSA ou des courbes elliptiques, ce qui en fait une
+                    mathématique très différent de RSA ou des courbes elliptiques, ce qui en fait une
                     alternative intéressante si jamais les attaques contre les réseaux progressent.</p>
 
                 <h2>L'intuition : huile et vinaigre</h2>
@@ -122,8 +122,8 @@
                     <li>On sépare les <em>n</em> variables en deux groupes : <strong>v</strong> variables "vinegar" et
                         <strong>o</strong> variables "oil"</li>
                     <li>On construit des équations où les termes oil×oil n'apparaissent jamais</li>
-                    <li>Cette absence de termes quadratiques entre variables oil permet de résoudre le système
-                        linéairement une fois les vinegars fixés</li>
+                    <li>Cette absence de termes quadratiques entre variables oil rend le système linéaire une fois les
+                        vinegars fixés</li>
                 </ul>
 
                 <h2>Formulation mathématique</h2>
@@ -134,7 +134,7 @@
 
                 <div class="math-box">
                     $$P_k(\mathbf{v}, \mathbf{o}) = \sum_{i \leq j} \alpha^{(k)}_{ij}\, v_i v_j + \sum_{i,j} \beta^{(k)}_{ij}\, v_i o_j + \sum_i \gamma^{(k)}_i\, v_i + \sum_j \delta^{(k)}_j\, o_j + \varepsilon^{(k)}$$
-                    <p style="margin:0.5em 0 0; font-size:0.88em; opacity:0.75;">Pas de termes \(o_i \cdot o_j\) — c'est la trappe. \(\mathbf{v} \in \mathbb{F}_q^v\), \(\mathbf{o} \in \mathbb{F}_q^o\).</p>
+                    <p style="margin:0.5em 0 0; font-size:0.88em; opacity:0.75;">Pas de termes \(o_i \cdot o_j\) : c'est la trappe. \(\mathbf{v} \in \mathbb{F}_q^v\), \(\mathbf{o} \in \mathbb{F}_q^o\).</p>
                 </div>
 
                 <p>L'absence de termes oil×oil est la trappe secrète. Visuellement, si on écrit le système sous forme
@@ -142,12 +142,12 @@
 
                 <div class="math-box">
                     $$M_k = \left(\begin{array}{c|c} A_k & B_k \\ \hline B_k^T & \mathbf{0} \end{array}\right) \quad \begin{array}{l} \leftarrow \text{vinegar} \times \text{vinegar}, \; \text{vinegar} \times \text{oil} \\ \leftarrow \text{oil} \times \text{oil} = \mathbf{0} \quad \text{(bloc nul)} \end{array}$$
-                    <p style="margin:0.5em 0 0; font-size:0.88em; opacity:0.75;">La structure bloc de \(M_k\) est la clé privée. La clé publique est \(M_k\) après application de \(T\) — ce qui masque la séparation huile/vinaigre.</p>
+                    <p style="margin:0.5em 0 0; font-size:0.88em; opacity:0.75;">La structure bloc de \(M_k\) est la clé privée. La clé publique est \(M_k\) après application de \(T\), ce qui masque la séparation huile/vinaigre.</p>
                 </div>
 
                 <h3>La trappe en action</h3>
 
-                <p>Pour signer, on procède ainsi :</p>
+                <p>Pour signer, le déroulé est le suivant :</p>
 
                 <ol>
                     <li><span class="step-number">1</span><strong>Fixer les vinegars</strong> : on choisit des valeurs
@@ -156,7 +156,7 @@
                         fixés, le système devient <em>linéaire</em> en les oils (puisqu'il n'y a pas de termes oil×oil)
                     </li>
                     <li><span class="step-number">3</span><strong>Système linéaire</strong> : on obtient \(m\)
-                        équations linéaires à \(o\) inconnues — résoluble en \(\mathcal{O}(m^3)\)</li>
+                        équations linéaires à \(o\) inconnues, résoluble en \(\mathcal{O}(m^3)\)</li>
                 </ol>
 
                 <h3>Pourquoi "Unbalanced" ?</h3>
@@ -189,7 +189,7 @@
                 <div class="math-box">
                     $$\mathcal{SK} = \bigl(\mathcal{F},\; T\bigr) \qquad \mathcal{PK} = P = \mathcal{F} \circ T^{-1}$$
                     $$P(\mathbf{x}) = \mathcal{F}\!\left(T^{-1}(\mathbf{x})\right)$$
-                    <p style="margin:0.5em 0 0; font-size:0.88em; opacity:0.75;">\(P\) est indiscernable d'un système MQ aléatoire. La trappe \(T\) permet de résoudre \(\mathcal{F}\) efficacement — impossible sans elle.</p>
+                    <p style="margin:0.5em 0 0; font-size:0.88em; opacity:0.75;">\(P\) est indiscernable d'un système MQ aléatoire. Avec la trappe \(T\), résoudre \(\mathcal{F}\) devient efficace. Sans elle, non.</p>
                 </div>
 
                 <h2>Signature et vérification</h2>
@@ -303,8 +303,7 @@
                 <div class="info-box">
                     <strong>Lecture du tableau :</strong> UOV signe ~10× plus lentement que Dilithium
                     (résolution d'un système linéaire par signature) mais vérifie extrêmement vite
-                    (simple évaluation polynomiale). Le goulot d'étranglement est la clé publique de 66 KB —
-                    rédhibitoire pour TLS, acceptable pour la signature de firmware ou de transactions blockchain.
+                    (simple évaluation polynomiale). Le goulot d'étranglement est la clé publique de 66 KB : rédhibitoire pour TLS, acceptable pour la signature de firmware ou de transactions blockchain.
                     Benchmarks issus des soumissions NIST et de l'implémentation de référence liboqs (x86-64, AVX2).
                 </div>
 
@@ -362,7 +361,7 @@
 
                 <ul>
                     <li><strong>Rainbow</strong> (variante multi-couches d'UOV) était finaliste NIST Round 3,
-                        mais a été cassé en 2022 par Ward Beullens en quelques heures sur un laptop — ce qui a
+                        mais a été cassé en 2022 par Ward Beullens en quelques heures sur un laptop, ce qui a
                         éliminé toute la famille des schémas multivariés structurés des finalistes.</li>
                     <li><strong>UOV classique</strong> a survécu : il a été soumis dans les "Additional Signatures"
                         du Round 1 (2023) et reste actif dans l'évaluation.</li>
@@ -372,12 +371,12 @@
                         Signatures du NIST et suscite davantage d'intérêt pratique qu'UOV pur.</li>
                     <li>Le NIST a standardisé Dilithium (FIPS 204), Falcon (FIPS 206) et SPHINCS+ (FIPS 205)
                         en 2024, mais l'appel aux Additional Signatures vise exactement cette diversité
-                        algorithmique — avoir au moins un candidat multivarié ou code-based en standard.</li>
+                        algorithmique : avoir au moins un candidat multivarié ou code-based en standard.</li>
                 </ul>
 
                 <div class="info-box">
                     <strong>MAYO vs UOV :</strong> Si UOV vous intéresse pour un usage pratique, MAYO est
-                    le successeur naturel — même fondement mathématique, clés publiques 50× plus petites.
+                    le successeur naturel : même base mathématique, clés publiques 50× plus petites.
                     L'implémentation de référence est disponible sur GitHub et intégrée dans liboqs.
                 </div>
 
@@ -496,19 +495,19 @@
                         les réseaux</li>
                 </ul>
 
-                <h2>Conclusion</h2>
+                <h2>Ce qu'il faut garder</h2>
 
                 <p>UOV est un schéma de signature post-quantique élégant dans sa conception. L'idée de cacher une
-                    structure "facile" derrière un mélange algébrique est simple à comprendre, mais la sécurité qui en
-                    résulte est remarquablement solide.</p>
+                    structure "facile" derrière un mélange algébrique est simple à comprendre, mais la sécurité obtenue
+                    tient étonnamment bien.</p>
 
                 <p>Ses clés publiques massives le rendent impraticable pour certains usages (TLS, certificats web), mais
                     ses signatures minuscules et sa vérification rapide le rendent attractif pour d'autres contextes.
                 </p>
 
-                <p>Surtout, UOV représente une alternative mathématique aux schémas basés sur les réseaux. Dans un monde
-                    post-quantique où on ne veut pas mettre tous ses œufs dans le même panier cryptographique, cette
-                    diversité a de la valeur.</p>
+                <p>UOV reste aussi une alternative mathématique aux schémas basés sur les réseaux. Quand on prépare le
+                    post-quantique, mettre tous ses œufs dans le même panier cryptographique serait une drôle d'idée.
+                    Cette diversité a de la valeur.</p>
 
                 <h2>Ressources</h2>
                 <ul>

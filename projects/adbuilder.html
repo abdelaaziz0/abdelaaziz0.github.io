@@ -49,8 +49,8 @@
         <span class="challenge-platform"><i class="fas fa-terminal"></i> Projet lab Active Directory</span>
         <h1 class="challenge-title">ADBuilder</h1>
         <p class="challenge-subtitle">
-          Moteur PowerShell complet permettant de construire automatiquement un environnement Active Directory de lab
-          à partir d'un fichier JSON : promotion du contrôleur de domaine, création des objets AD, configuration des
+          Moteur PowerShell complet pour construire automatiquement un environnement Active Directory de lab depuis un
+          fichier JSON : promotion du contrôleur de domaine, création des objets AD, configuration des
           groupes, utilisateurs, ordinateurs, politiques de mots de passe, GPO, Kerberos, DNS, AD CS et vérifications
           finales.
         </p>
@@ -105,9 +105,9 @@
 
         <h2 id="objectif">1. Objectif</h2>
         <p>
-          ADBuilder permet de générer un lab Active Directory complet à partir d'un fichier JSON. L'objectif est de
-          remplacer les manipulations manuelles longues et fragiles par une configuration déclarative, claire et
-          rejouable. Le fichier JSON devient la source de vérité du lab : il décrit le domaine, les unités
+          ADBuilder génère un lab Active Directory complet à partir d'un fichier JSON. Le but est simple : remplacer les
+          manipulations manuelles longues et fragiles par une configuration déclarative, claire et rejouable. Le fichier
+          JSON devient la source de vérité du lab : il décrit le domaine, les unités
           d'organisation, les groupes, les utilisateurs, les ordinateurs, les memberships, les politiques de mots de
           passe fines, les GPO, les paramètres Kerberos, les entrées DNS, les éléments AD CS et les assertions
           attendues.
@@ -116,8 +116,8 @@
         <p>
           Le projet fonctionne sur Windows Server Core avec PowerShell 5.1. Il prend en charge la promotion du serveur
           en contrôleur de domaine, le reboot obligatoire après promotion, puis la reprise automatique pour appliquer le
-          reste de la configuration. Cette séparation en deux phases permet d'avoir un déploiement propre, contrôlé et
-          adapté au fonctionnement réel d'Active Directory.
+          reste de la configuration. Cette séparation en deux phases donne un déploiement propre, contrôlé et adapté au
+          fonctionnement réel d'Active Directory.
         </p>
 
         <p>
@@ -399,8 +399,8 @@
 
         <p>
           L'ordonnancement des composants est piloté par un DAG. Chaque provider déclare les capacités dont il dépend et
-          celles qu'il produit. Cette approche évite un ordre d'exécution fragile et permet de construire le lab de
-          manière cohérente.
+          celles qu'il produit. Cette approche évite un ordre d'exécution fragile et construit le lab dans une séquence
+          cohérente.
         </p>
 
         <pre><code>domain.ready
@@ -415,8 +415,7 @@
 
         <p>
           À la fin du run, ADBuilder vérifie l'état du lab : existence des utilisateurs, groupes, ordinateurs,
-          memberships, politiques FGPP, objets AD CS et relations attendues. Le lab est donc non seulement créé, mais
-          aussi validé.
+          memberships, politiques FGPP, objets AD CS et relations attendues. Le lab est créé, puis validé.
         </p>
 
         <h2 id="securite">4. Garde-fous</h2>
@@ -436,7 +435,7 @@
             <strong>Dry-run</strong> : le plan peut être simulé avant application réelle.
           </li>
           <li>
-            <strong>État de run</strong> : un fichier d'état permet de reprendre proprement après reboot.
+            <strong>État de run</strong> : un fichier d'état reprend proprement après reboot.
           </li>
           <li>
             <strong>Assertions finales</strong> : les objets et relations attendus sont contrôlés automatiquement.

@@ -292,7 +292,7 @@ Thomas.Powell, mgtsvc$ (gMSA)</code></pre>
         <p style="margin-top:.7rem;font-size:.85em;opacity:.75;">
           Condition nécessaire : le DC doit autoriser les null sessions SAMR. C'est le comportement
           par défaut sur les DC Windows Server 2008+. Le flag
-          <code>RestrictAnonymousSAM = 0</code> (par défaut) le permet.
+          <code>RestrictAnonymousSAM = 0</code> (par défaut) ouvre ce chemin.
         </p>
       </div>
 
@@ -418,8 +418,8 @@ Users      READ</code></pre>
           style="width:100%; border-radius:6px; border:1px solid rgba(255,255,255,.08);">
         <figcaption style="margin-top:.6rem; font-size:.8rem; opacity:.6; font-style:italic;">
           BloodHound -<code>mgtsvc$</code> est membre de <code>Domain Computers</code> et de
-          <code>Remote Management Users</code>. C'est cette dernière appartenance qui permet
-          le Pass-the-Hash via WinRM (port 5985).
+          <code>Remote Management Users</code>. Cette dernière appartenance rend le Pass-the-Hash possible via WinRM
+          (port 5985).
         </figcaption>
       </figure>
 
@@ -474,7 +474,7 @@ PS C:\Users\mgtsvc$\Documents> type C:/user.txt
   Get-ItemProperty | Select-Object ImagePath |
   select-string -NotMatch "svchost.exe" | select-string "exe"
 
-<span class="comment"># Extrait pertinent parmi la sortie complète :</span>
+<span class="comment"># Extrait utile parmi la sortie complète :</span>
 <span class="good">@{ImagePath=C:\WINDOWS\helpdesk.exe -u clifford.davey -p [redacted] -k netsvcs}</span></code></pre>
 
       <p>Un service custom nommé <code>helpdesk</code> passe les credentials de <code>clifford.davey</code>
@@ -493,8 +493,8 @@ PS C:\Users\mgtsvc$\Documents> type C:/user.txt
         <span class="signal-label">What pointed us here</span>
         <code>clifford.davey</code> est membre du groupe <code>ca-operators</code>. Ce groupe a
         des droits <code>Full Control</code> sur le template <code>SendaiComputer</code>.
-        Certipy identifie cela comme ESC4 -des permissions dangereuses permettent de réécrire
-        le template pour le rendre exploitable, puis de demander un certificat en tant qu'Administrator.
+        Certipy identifie cela comme ESC4 : des permissions dangereuses autorisent la réécriture du template, puis la
+        demande d'un certificat en tant qu'Administrator.
       </div>
 
       <figure style="margin: 1.6rem 0;">
@@ -519,7 +519,7 @@ PS C:\Users\mgtsvc$\Documents> type C:/user.txt
 
         <p><strong>ESC4</strong> : un principal non-admin a des droits d'écriture sur un template
           (via <code>WriteProperty</code>, <code>WriteDacl</code>, <code>WriteOwner</code> ou
-          <code>GenericWrite/GenericAll</code>). Cela permet de modifier les attributs du template pour :
+          <code>GenericWrite/GenericAll</code>). Ces droits donnent la main sur les attributs du template pour :
         </p>
         <ul>
           <li>Activer <code>CT_FLAG_ENROLLEE_SUPPLIES_SUBJECT</code> → le demandeur peut mettre n'importe
@@ -826,7 +826,7 @@ PS C:\Users\Administrator\Desktop> type root.txt
             </tr>
             <tr>
               <td>ESC4</td>
-              <td>Des droits d'écriture sur un template AD CS permettent de le transformer en ESC1.
+              <td>Des droits d'écriture sur un template AD CS suffisent à le transformer en ESC1.
                 <code>certipy template -write-default-configuration</code> applique la configuration
                 la plus permissive en une commande, puis le template devient exploitable comme ESC1.
               </td>

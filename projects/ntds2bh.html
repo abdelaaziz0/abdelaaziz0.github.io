@@ -120,11 +120,9 @@
         </p>
 
         <p>
-          Le projet ne cherche pas à remplacer l'analyse humaine. Il automatise la reconstruction du graphe pour
-          permettre
-          à l'auditeur d'étudier plus rapidement les chemins de privilèges, les relations dangereuses, les ACL
-          sensibles,
-          les délégations Kerberos, les trusts et les éléments AD CS exposés.
+          Le projet ne cherche pas à remplacer l'analyse humaine. Il automatise la reconstruction du graphe pour que
+          l'auditeur lise plus vite les chemins de privilèges, les relations dangereuses, les ACL sensibles, les
+          délégations Kerberos, les trusts et les éléments AD CS exposés.
         </p>
 
         <h2 id="entrees-sorties">2. Entrées et sorties</h2>
@@ -229,7 +227,7 @@ Output: ./bloodhound.zip</code></pre>
 
         <ul>
           <li><code>datatable</code> : objets AD et majorité des attributs.</li>
-          <li><code>link_table</code> : relations liées, notamment memberships et backlinks.</li>
+          <li><code>link_table</code> : relations liées, dont memberships et backlinks.</li>
           <li><code>sd_table</code> : security descriptors binaires référencés par les objets.</li>
         </ul>
 
@@ -305,8 +303,8 @@ Output: ./bloodhound.zip</code></pre>
           Les relations Active Directory ne sont pas toutes stockées comme des attributs directs. Les memberships de
           groupe résident dans <code>link_table</code>. Le <code>primaryGroupID</code> d'un utilisateur ou d'un
           ordinateur
-          doit être résolu séparément puis réinjecté dans la liste des memberships. Les délégations Kerberos s'appuient
-          sur des SPNs qu'il faut faire correspondre à des comptes réels. Les well-known SIDs doivent être normalisés
+          doit être résolu séparément puis réinjecté dans la liste des memberships. Les délégations Kerberos passent
+          par des SPNs qu'il faut faire correspondre à des comptes réels. Les well-known SIDs doivent être normalisés
           pour
           être acceptés par BloodHound. Les trusts sont stockés dans des objets <code>trustedDomain</code> et doivent
           être
@@ -385,8 +383,8 @@ Output: ./bloodhound.zip</code></pre>
           Il montre aussi une compréhension concrète des structures internes AD : tables ESE, schéma, DNT, distinguished
           names, SIDs, group memberships, primary groups, ACL, ACEs, trusts, délégation Kerberos et objets AD CS.
           L'intérêt
-          n'est pas seulement de parser des données, mais de reconstruire les relations qui permettent réellement
-          d'analyser un domaine.
+          n'est pas seulement de parser des données, mais de reconstruire les relations qui rendent l'analyse du
+          domaine lisible.
         </p>
 
         <p>
@@ -397,8 +395,8 @@ Output: ./bloodhound.zip</code></pre>
 
         <h2 id="attribution">8. Attribution technique</h2>
         <p>
-          Le parsing NTDS bas niveau s'appuie sur des composants hérités de <code>ntdissector</code>, notamment pour
-          l'ouverture de la base ESE, la lecture des tables internes, la résolution du schéma et la normalisation des
+          Le parsing NTDS bas niveau reprend des composants hérités de <code>ntdissector</code>, dont l'ouverture de la
+          base ESE, la lecture des tables internes, la résolution du schéma et la normalisation des
           attributs. <code>ntds2bh</code> ajoute la couche orientée BloodHound : typage des SIDs, résolution des ACL,
           mapping des ACEs vers des droits BloodHound, reconstruction des relations, gestion des objets AD CS et
           écriture

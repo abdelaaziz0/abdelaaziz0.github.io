@@ -463,8 +463,8 @@ userAccountControl: NORMAL_ACCOUNT; DONT_EXPIRE_PASSWORD</code></pre>
           <li><code>GenericWrite</code> sur un compte → écriture de l'attribut <code>msDS-KeyCredentialLink</code> →
             Shadow Credentials</li>
         </ul>
-        <p><code>GenericWrite</code> ne permet pas d'écrire directement <code>unicodePwd</code> (le hash NT),
-          mais il donne accès à suffisamment d'attributs pour compromettre le compte autrement, via
+        <p><code>GenericWrite</code> ne donne pas l'écriture directe sur <code>unicodePwd</code> (le hash NT),
+          mais il ouvre assez d'attributs pour compromettre le compte autrement, via
           l'ajout d'un credential de clé publique ou la modification du SPN.</p>
         <div class="theory-diagram">p.agila
           ∈ Service Account Managers
