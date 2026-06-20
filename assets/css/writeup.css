@@ -95,12 +95,30 @@ body > nav {
 
 .logo,
 .nav-logo {
-  color: var(--accent);
-  font-family: "IBM Plex Mono", monospace;
-  font-size: 0.85rem;
-  font-weight: 600;
-  letter-spacing: 0.05em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  overflow: hidden;
   text-decoration: none;
+}
+
+.logo img,
+.nav-logo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.logo:hover,
+.nav-logo:hover {
+  border-color: rgba(232, 213, 163, 0.45);
 }
 
 .nav-links {

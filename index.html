@@ -8,19 +8,18 @@
   <meta name="robots" content="index, follow">
   <meta name="description" content="Portfolio d'Abdelaaziz Belkhair, pentest Web et Active Directory.">
   <link rel="canonical" href="https://abdelaaziz0.github.io/">
-  <link rel="icon" href="/favicon.ico" sizes="any">
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/assets/img/anubis.png" type="image/png">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://abdelaaziz0.github.io/">
   <meta property="og:title" content="Abdelaaziz Belkhair | Pentest Web & Active Directory">
   <meta property="og:description"
     content="Portfolio d'Abdelaaziz Belkhair, élève-ingénieur cybersécurité en stage chez Orange Cyberdefense, disponible pour un CDI en pentest Web ou Active Directory.">
-  <meta property="og:image" content="https://abdelaaziz0.github.io/assets/img/profile.webp">
+  <meta property="og:image" content="https://abdelaaziz0.github.io/assets/img/anubis.png">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Abdelaaziz Belkhair | Pentest Web & Active Directory">
   <meta name="twitter:description"
     content="Portfolio d'Abdelaaziz Belkhair, élève-ingénieur cybersécurité en stage chez Orange Cyberdefense, disponible pour un CDI en pentest Web ou Active Directory.">
-  <meta name="twitter:image" content="https://abdelaaziz0.github.io/assets/img/profile.webp">
+  <meta name="twitter:image" content="https://abdelaaziz0.github.io/assets/img/anubis.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
     integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg=="
@@ -31,7 +30,8 @@
 
 <body>
   <nav class="home-nav" aria-label="Navigation principale">
-    <a class="nav-logo" href="index.html">AB_</a>
+    <a class="nav-logo" href="index.html" aria-label="Accueil Abdelaaziz Belkhair"><img src="assets/img/anubis.png"
+        alt="Logo Anubis Abdelaaziz Belkhair"></a>
     <ul class="nav-links">
       <li><a href="#snapshot">Profil</a></li>
       <li><a href="#work">Travail</a></li>
@@ -45,8 +45,8 @@
 
   <main>
     <section class="hero-home" id="home">
+      <img class="hero-mark" src="assets/img/anubis.png" alt="" aria-hidden="true">
       <div class="hero-inner">
-        <span class="hero-eyebrow">Pentest Web / Active Directory</span>
         <h1 class="hero-title">Abdelaaziz Belkhair</h1>
         <p class="hero-copy">
           Je termine mon stage PFE chez Orange Cyberdefense et je cherche un CDI en pentest Web ou Active
@@ -55,8 +55,8 @@
         </p>
         <div class="hero-actions">
           <a class="button button-primary" href="#work"><i class="fas fa-terminal"></i> Voir le travail</a>
-          <a class="button" href="#writeups"></i> Writeups</a>
-          <a class="button" href="#contact"></i> Me contacter</a>
+          <a class="button" href="#writeups">Writeups</a>
+          <a class="button" href="#contact">Me contacter</a>
         </div>
         <div class="challenge-stats hero-stats">
           <div class="stat-item"><span class="stat-value">Septembre 2026</span><span class="stat-label">Disponible
@@ -70,38 +70,9 @@
       </div>
     </section>
 
-    <section class="page-section" id="snapshot">
-      <div class="section-head">
-        <div>
-          <span class="section-kicker">En bref</span>
-          <h2>Profil en bref</h2>
-        </div>
-      </div>
-      <div class="proof-grid">
-        <article class="proof-card">
-          <span class="mini-tag">Stage actuel</span>
-          <strong>Pentest web</strong>
-          <p>Stage de 6 mois à Marseille en pentest web : recherche et exploitation de vulnérabilités et rédaction de
-            rapports techniques.</p>
-        </article>
-        <article class="proof-card">
-          <span class="mini-tag">Writeups détaillées</span>
-          <strong>Writeups</strong>
-          <p>Writeups HTB/TryHackMe sur l'exploitation de boxes, l'audit de code, les hypothèses testées et les
-            chaînes d'attaque qui tiennent vraiment.</p>
-        </article>
-        <article class="proof-card">
-          <span class="mini-tag">Outils publiés</span>
-          <strong>Outils d'audit</strong>
-          <p>Outillage offensif pour Active Directory et génération de labs.</p>
-        </article>
-      </div>
-    </section>
-
     <section class="page-section" id="about">
       <div class="section-head">
         <div>
-          <span class="section-kicker">Profil</span>
           <h2>Pentest Web et Active Directory</h2>
         </div>
       </div>
@@ -110,35 +81,29 @@
           <p>
             Je travaille surtout sur des chaînes d'exploitation Web et Active Directory.
           </p>
-          <div class="card-grid">
-            <article class="feature-card">
-              <h3>Pentest Web</h3>
-              <p>Recherche de vulnérabilités, exploitation, analyse du comportement applicatif, validation et
-                rédaction de rapports.</p>
-            </article>
-            <article class="feature-card">
+          <div class="domain-stack">
+            <article class="feature-card domain-lead">
               <h3>Active Directory</h3>
-              <p>Exploitation Active Directory : énumération, chemins de privilèges, abus de configurations et preuve
-                d'impact en lab ou en mission.</p>
+              <p>C'est là que je passe le plus de temps. Énumération, chemins de privilèges, abus de configurations,
+                AD CS et délégations Kerberos, avec la preuve d'impact en lab comme en mission. Du foothold au
+                Domain Admin.</p>
             </article>
-            <article class="feature-card">
-              <h3>Ingénierie</h3>
-              <p>Python, PowerShell, automatisation de labs AD, développement d'exploits et outillage d'audit.
-              </p>
-            </article>
+            <div class="domain-stack">
+              <article class="feature-card domain-lead">
+                <h3>Pentest Web</h3>
+                <p>Recherche de vulnérabilités, exploitation, analyse du comportement applicatif, validation et
+                  rédaction de rapports.</p>
+              </article>
+            </div>
           </div>
         </div>
-        <aside class="panel profile-frame">
-          <img src="assets/img/profile.webp" alt="Portrait d'Abdelaaziz Belkhair" loading="lazy">
-        </aside>
       </div>
     </section>
 
     <section class="page-section" id="work">
       <div class="section-head">
         <div>
-          <span class="section-kicker">Travail sélectionné</span>
-          <h2>Outils de pentest</h2>
+          <h2>Mes Outils de pentest</h2>
         </div>
       </div>
       <div class="project-grid">
@@ -213,14 +178,13 @@
         </article>
       </div>
       <div class="hero-actions">
-        <a class="button" href="projects.html"><i class="fas fa-folder-open"></i> Tous les projets</a>
+        <a class="button" href="projects.html">Tous les projets</a>
       </div>
     </section>
 
     <section class="page-section" id="writeups">
       <div class="section-head">
         <div>
-          <span class="section-kicker">Writeups sélectionnées</span>
           <h2>Writeups</h2>
         </div>
       </div>
@@ -233,9 +197,8 @@
           <a href="writeups/garfield.html">Lire</a>
         </article>
         <article class="article-card">
-          <h3>Pirate - HTB Writeup</h3>
-          <p>LDAP anonyme → Pre-Win2000 MS01$ → extraction gMSA double (ADCS + ADFS) → PtH WinRM → relai NTLM RBCD →
-            SYSTEM WEB01 → SPN injection + délégation contrainte Protocol Transition → DC01.</p>
+          <h3>Pirate - HTB</h3>
+          <p>Chaîne Active Directory en boîte noire, de l'accès anonyme jusqu'au Domain Admin.</p>
           <div class="tag-row"><span class="mini-tag">Hard</span><span class="mini-tag">Windows AD</span></div>
           <a href="writeups/pirate.html">Lire</a>
         </article>
@@ -246,22 +209,21 @@
           <a href="writeups/fluffy.html">Lire</a>
         </article>
         <article class="article-card">
-          <h3>Resizer - HTB CTF</h3>
-          <p>Une écriture de fichier presque anodine finit en import hijack Python.</p>
-          <div class="tag-row"><span class="mini-tag">Hard</span><span class="mini-tag">Flask</span></div>
-          <a href="writeups/resizer.html">Lire</a>
+          <h3>NanoCorp - HTB</h3>
+          <p>Capture de hash réseau, crack, BloodHound, abus de groupe, WinRM et élévation via service tiers.</p>
+          <div class="tag-row"><span class="mini-tag">HTB</span><span class="mini-tag">Windows AD</span></div>
+          <a href="writeups/nanocorp.html">Lire</a>
         </article>
       </div>
       <div class="hero-actions">
-        <a class="button" href="writeups.html"></i> Toutes les analyses</a>
+        <a class="button" href="writeups.html">Toutes les analyses</a>
       </div>
     </section>
 
     <section class="page-section" id="articles">
       <div class="section-head">
         <div>
-          <span class="section-kicker">Articles techniques</span>
-          <h2>Notes et analyses</h2>
+          <h2>Articles et Notes</h2>
         </div>
       </div>
       <div class="article-grid">
@@ -293,14 +255,13 @@
         </article>
       </div>
       <div class="hero-actions">
-        <a class="button" href="blog.html"></i> Tous les articles</a>
+        <a class="button" href="blog.html">Tous les articles</a>
       </div>
     </section>
 
     <section class="page-section" id="experience">
       <div class="section-head">
         <div>
-          <span class="section-kicker">Parcours</span>
           <h2>Formation et expérience</h2>
         </div>
       </div>
@@ -344,7 +305,6 @@
     <section class="page-section" id="certifications">
       <div class="section-head">
         <div>
-          <span class="section-kicker">Formations</span>
           <h2>Formations et certifications principales</h2>
         </div>
       </div>
@@ -393,15 +353,13 @@
     <section class="page-section" id="contact">
       <div class="section-head">
         <div>
-          <span class="section-kicker">Contact</span>
           <h2>Me contacter</h2>
         </div>
-        <p>Email pour le premier contact, LinkedIn pour le contexte, GitHub pour les projets publics, HackTheBox et
-          TryHackMe pour les labs.</p>
       </div>
       <div class="contact-grid-alt">
-        <article class="contact-card">
-          <i class="fas fa-envelope"></i>
+        <article class="contact-card contact-logo-card">
+          <a class="icon-link" href="mailto:abelkhair002@bordeaux-inp.fr" aria-label="Email"><i
+              class="fas fa-envelope"></i></a>
           <h3>Email</h3>
           <p><a href="mailto:abelkhair002@bordeaux-inp.fr">abelkhair002@bordeaux-inp.fr</a></p>
         </article>
