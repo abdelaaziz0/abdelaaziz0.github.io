@@ -6,17 +6,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ntds2bh - Présentation technique</title>
   <meta name="description"
-    content="Présentation technique de ntds2bh, outil d'analyse offline qui reconstruit un graphe BloodHound CE à partir d'un NTDS.dit autorisé.">
+    content="Présentation technique de ntds2bh, outil Python qui convertit un NTDS.dit autorisé en collections BloodHound CE v6 sans collecte LDAP live.">
   <link rel="canonical" href="https://abdelaaziz0.github.io/projects/ntds2bh.html">
   <link rel="icon" href="/assets/img/anubis.png" type="image/png">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://abdelaaziz0.github.io/projects/ntds2bh.html">
   <meta property="og:title" content="ntds2bh - Présentation technique">
-  <meta property="og:description" content="Présentation technique de ntds2bh, outil d'analyse offline qui reconstruit un graphe BloodHound CE à partir d'un NTDS.dit autorisé.">
+  <meta property="og:description"
+    content="Présentation technique de ntds2bh, outil Python qui convertit un NTDS.dit autorisé en collections BloodHound CE v6 sans collecte LDAP live.">
   <meta property="og:image" content="https://abdelaaziz0.github.io/assets/img/anubis.png">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="ntds2bh - Présentation technique">
-  <meta name="twitter:description" content="Présentation technique de ntds2bh, outil d'analyse offline qui reconstruit un graphe BloodHound CE à partir d'un NTDS.dit autorisé.">
+  <meta name="twitter:description"
+    content="Présentation technique de ntds2bh, outil Python qui convertit un NTDS.dit autorisé en collections BloodHound CE v6 sans collecte LDAP live.">
   <meta name="twitter:image" content="https://abdelaaziz0.github.io/assets/img/anubis.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
@@ -49,14 +51,16 @@
         <span class="challenge-platform"><i class="fas fa-diagram-project"></i> Projet Active Directory</span>
         <h1 class="challenge-title">ntds2bh</h1>
         <p class="challenge-subtitle">
-          Outil d'analyse offline qui transforme un fichier <code>NTDS.dit</code> autorisé en archive ZIP compatible
-          BloodHound CE. Il reconstruit les objets, relations, ACL, chemins de délégation, éléments AD CS et trusts afin
-          d'étudier la structure réelle d'un domaine Active Directory sous forme de graphe.
+          Outil Python d'analyse offline qui transforme un fichier <code>NTDS.dit</code> autorisé en collections
+          BloodHound CE v6. Il reconstruit les objets AD, relations, ACL, chemins de délégation, éléments AD CS et
+          trusts afin d'étudier la structure réelle d'un domaine sans requête LDAP live.
         </p>
         <div class="challenge-meta">
+          <span class="meta-badge category">Python</span>
           <span class="meta-badge category">Active Directory</span>
           <span class="meta-badge tag">BloodHound CE</span>
           <span class="meta-badge tag">NTDS.dit</span>
+          <span class="meta-badge tag">ESE</span>
           <span class="meta-badge tag">Parsing offline</span>
           <span class="meta-badge tag">ACL</span>
           <span class="meta-badge tag">AD CS</span>
@@ -67,16 +71,16 @@
             <span class="stat-label">Mode d'analyse</span>
           </div>
           <div class="stat-item">
-            <span class="stat-value">BH CE</span>
-            <span class="stat-label">Format cible</span>
+            <span class="stat-value">v6</span>
+            <span class="stat-label">Schéma BloodHound</span>
           </div>
           <div class="stat-item">
-            <span class="stat-value">ZIP</span>
-            <span class="stat-label">Sortie importable</span>
+            <span class="stat-value">13</span>
+            <span class="stat-label">Collections JSON</span>
           </div>
           <div class="stat-item">
-            <span class="stat-value">AD</span>
-            <span class="stat-label">Graphe reconstruit</span>
+            <span class="stat-value">ZIP/dir</span>
+            <span class="stat-label">Sortie</span>
           </div>
         </div>
       </section>
@@ -146,8 +150,8 @@
               </tr>
               <tr>
                 <td>Sortie</td>
-                <td>Archive <code>bloodhound.zip</code> contenant les collections JSON BloodHound CE : users, computers,
-                  groups, domains, OUs, containers, GPOs, AD CS objects, trusts et relations associées.</td>
+                <td>Archive <code>bloodhound.zip</code> ou dossier de collections JSON BloodHound CE v6 : users,
+                  computers, groups, domains, OUs, containers, GPOs, AD CS objects et relations associées.</td>
               </tr>
               <tr>
                 <td>Mode d'utilisation</td>
@@ -164,19 +168,21 @@
         <pre><code>uv venv
 source .venv/bin/activate
 uv sync
-python main.py -n ntds.dit</code></pre>
+uv run ntds2bh -n ntds.dit</code></pre>
 
         <p>
-          La sortie est générée par défaut dans <code>./bloodhound.zip</code>. Il est aussi possible de choisir un
-          chemin
-          de sortie explicite.
+          La sortie est générée par défaut dans <code>./bloodhound.zip</code>. Il est possible de choisir un chemin de
+          sortie explicite, de demander un dossier de JSON avec <code>--no-zip</code>, ou d'ajuster la verbosité avec
+          <code>-v</code> et <code>-q</code>.
         </p>
 
-        <pre><code>python main.py -n ntds.dit -o Bloodhound_output.zip</code></pre>
+        <pre><code>uv run ntds2bh -n ntds.dit -o Bloodhound_output.zip
+uv run ntds2bh -n ntds.dit --no-zip -o Bloodhound_output
+uv run ntds2bh -n ntds.dit -v</code></pre>
 
         <details>
           <summary>Voir un exemple de sortie CLI complète</summary>
-          <pre><code>python main.py -n ntds.dit
+          <pre><code>uv run ntds2bh -n ntds.dit
 
           __      __    ___   __    __  
    ____  / /_____/ /___|__ \ / /_  / /_ 
@@ -184,29 +190,30 @@ python main.py -n ntds.dit</code></pre>
  / / / / /_/ /_/ (__  ) __// /_/ / / / /
 /_/ /_/\__/\__,_/____/____/_.___/_/ /_/
 
-Opening NTDS database: ntds.dit
+Opening NTDS database: test/ntds-lab.dit
 Building schemas from datatable...
 Parsing sd_table...
 Parsing link_table...
 Parsing datatable for schema resolution...
 Building distinguished names...
-Processing 1770 unresolved DNs...
-Schema build complete. Seen 3731 records.
-NTDS initialized. Schema resolved 1314 attributes, 269 object classes.
-Found domain: DOMAIN.LOCAL (SID: S-1-5-21-729746778-2675978091-3820388244)
-Found 14 users
-Found 1 computers
-Found 59 groups
-Found 2 gpos
+Processing 1779 unresolved DNs...
+Schema build complete. Seen 3898 records.
+NTDS initialized. Schema resolved 1317 attributes, 270 object classes.
+Found domain: NTDS2BH.LAB (SID: S-1-5-21-719806804-2045287352-1372248481)
+Mapping objects: 100%|████████████████████████████████████████| 3898/3898 [00:01&lt;00:00, 2492.50obj/s]
+Found 54 users
+Found 14 computers
+Found 82 groups
+Found 4 gpos
 Found 1 domains
-Found 316 containers
-Found 1 ous
-Found 34 certtemplates
+Found 332 containers
+Found 17 ous
+Found 37 certtemplates
 Found 1 enterprisecas
 Found 1 rootcas
 Found 1 aiacas
 Found 1 ntauthstores
-Found 15 issuancepolicies
+Found 13 issuancepolicies
 Output: ./bloodhound.zip</code></pre>
         </details>
 
@@ -233,17 +240,18 @@ Output: ./bloodhound.zip</code></pre>
         <pre><code>NTDS.dit
     -&gt; ouverture ESE
     -&gt; lecture datatable / link_table / sd_table
+    -&gt; build_indexes() : schéma, SIDs, primary groups, DCs, GUIDs
     -&gt; reconstruction du schéma et des DNs
     -&gt; normalisation des objets
-    -&gt; résolution des SIDs, ACL, memberships, trusts et délégations
+    -&gt; routage des objets et filtrage des objets supprimés
+    -&gt; résolution des SIDs, ACL, memberships, trusts, AD CS et délégations
     -&gt; mapping vers les modèles BloodHound CE
-    -&gt; génération de bloodhound.zip</code></pre>
+    -&gt; génération de bloodhound.zip ou dossier JSON</code></pre>
 
         <p>
           Les deux premières étapes reposent sur une base de parsing héritée de <code>ntdissector</code>. La couche
-          propre
-          à <code>ntds2bh</code> intervient ensuite pour transformer les données NTDS normalisées en objets et relations
-          BloodHound CE.
+          propre à <code>ntds2bh</code> intervient ensuite pour indexer les SIDs et GUIDs utiles, typer les objets,
+          reconstruire les relations, puis écrire les collections BloodHound CE.
         </p>
 
         <details>
@@ -319,19 +327,26 @@ Output: ./bloodhound.zip</code></pre>
         <h2 id="validation">5. Validation</h2>
         <p>
           Les sorties sont validées sur des environnements de lab contrôlés avant import dans BloodHound CE. Les
-          contrôles
-          portent sur la présence des objets attendus, la cohérence des SIDs, la résolution des distinguished names, les
-          memberships, les trusts, les relations de délégation, les ACL dérivées et les objets AD CS.
+          contrôles portent sur la présence des objets attendus, la cohérence des SIDs, la résolution des distinguished
+          names, les memberships, les trusts, les relations de délégation, les ACL dérivées et les objets AD CS.
+          Le projet contient aussi des tests unitaires et des snapshots pour verrouiller les formes BloodHound générées.
         </p>
 
         <p>
           L'objectif de validation est simple : un objet présent dans <code>NTDS.dit</code> doit être routé vers la
           bonne
           collection BloodHound, et une relation présente dans la base doit produire l'arête correspondante dans le
-          graphe.
-          Les doublons, relations orphelines, SIDs non résolus et mappings ambigus sont traités pendant la
-          normalisation.
+          graphe. Les doublons, relations orphelines, SIDs non résolus, objets supprimés et mappings ambigus sont
+          traités pendant la normalisation.
         </p>
+
+        <pre><code>python -m pytest
+
+tests/test_sddl.py
+tests/test_orchestrator.py
+tests/test_snapshot.py
+tests/test_utils_formatters.py
+tests/snapshots/*.json</code></pre>
 
         <details>
           <summary>Voir les collections BloodHound CE générées</summary>
@@ -395,11 +410,10 @@ Output: ./bloodhound.zip</code></pre>
         <h2 id="attribution">8. Attribution technique</h2>
         <p>
           Le parsing NTDS bas niveau reprend des composants hérités de <code>ntdissector</code>, dont l'ouverture de la
-          base ESE, la lecture des tables internes, la résolution du schéma et la normalisation des
-          attributs. <code>ntds2bh</code> ajoute la couche orientée BloodHound : typage des SIDs, résolution des ACL,
-          mapping des ACEs vers des droits BloodHound, reconstruction des relations, gestion des objets AD CS et
-          écriture
-          de l'archive finale.
+          base ESE, la lecture des tables internes, la résolution du schéma et la normalisation des attributs.
+          <code>ntds2bh</code> ajoute la couche orientée BloodHound : indexation des SIDs, primary groups, domain
+          controllers et GUIDs, résolution des ACL, mapping des ACEs vers des droits BloodHound, reconstruction des
+          relations, gestion des objets AD CS et écriture des collections finales.
         </p>
 
         <details>
@@ -414,20 +428,20 @@ Output: ./bloodhound.zip</code></pre>
 
 Ajouté par ntds2bh :
 - get_parsed_sd() pour retrouver les security descriptors depuis sd_table
-- build_sid_to_type() pour typer les SIDs et préparer les caches
+- build_indexes() pour construire les caches SID, primaryGroupID, DCs, objectType GUIDs et domaine
 - utils/ace_resolver.py pour mapper les ACEs vers les droits BloodHound
 - utils/sid_resolver.py pour gérer well-known SIDs et types d'objets
 - utils/adcs.py pour normaliser les objets AD CS
 - pipeline/orchestrator.py pour router les objets et reconstruire les relations
 - models/*.py pour produire les shapes BloodHound CE
-- pipeline/writer.py pour écrire bloodhound.zip</code></pre>
+- pipeline/writer.py pour écrire bloodhound.zip ou un dossier de collections JSON</code></pre>
         </details>
 
         <details>
           <summary>Voir le pipeline détaillé complet</summary>
           <pre><code>main.py
-    -&gt; argument -n NTDS.dit
-    -&gt; ouverture ESE
+    -&gt; arguments -n NTDS.dit, -o output, --no-zip, -v, -q
+    -&gt; writer ZIP ou dossier JSON
 
 core.ntds_base.NTDS
     -&gt; datatable
@@ -439,10 +453,11 @@ core.ntds_base.NTDS
 
 pipeline.orchestrator.run
     -&gt; découverte du domaine
-    -&gt; build_sid_to_type()
+    -&gt; build_indexes()
     -&gt; serializeRecord()
     -&gt; formatRecord()
     -&gt; routage par objectClass ou sAMAccountType
+    -&gt; skip des objets isDeleted
 
 security descriptor path
     -&gt; get_parsed_sd()
@@ -476,7 +491,7 @@ relationship enrichment
 writer
     -&gt; BloodHound CE JSON collections
     -&gt; meta.version = 6
-    -&gt; bloodhound.zip</code></pre>
+    -&gt; bloodhound.zip ou dossier JSON</code></pre>
         </details>
       </div>
     </article>
