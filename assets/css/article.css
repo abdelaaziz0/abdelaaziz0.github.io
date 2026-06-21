@@ -239,7 +239,70 @@
 }
 
 @media (max-width: 700px) {
+  .article-hero,
+  .article-header {
+    margin-bottom: 2rem;
+    padding: 2.8rem 0 2rem;
+  }
+
+  .article-hero h1,
+  .article-header h1 {
+    font-size: clamp(2.2rem, 13vw, 2.8rem);
+    line-height: 1.04;
+    overflow-wrap: anywhere;
+  }
+
+  .subtitle {
+    font-size: 0.96rem;
+    line-height: 1.65;
+  }
+
+  .article-meta {
+    gap: 0.45rem;
+  }
+
+  .article-date,
+  .article-tag {
+    max-width: 100%;
+    white-space: normal;
+    font-size: 0.62rem;
+  }
+
   .hero-stats {
     grid-template-columns: 1fr;
+  }
+
+  .hero-stat,
+  .tool-card,
+  .c2-card,
+  .concept-box,
+  .math-box,
+  .orange-box,
+  .purple-box,
+  .terminal-box,
+  .attack-path {
+    min-width: 0;
+    padding: 1rem;
+  }
+
+  .tool-grid,
+  .c2-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .attack-path-flow {
+    align-items: stretch;
+  }
+
+  .attack-path-node {
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  .comparison-table,
+  .mitre-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
   }
 }
