@@ -8,18 +8,24 @@
   <meta name="robots" content="index, follow">
   <meta name="description" content="Portfolio d'Abdelaaziz Belkhair, pentest Web et Active Directory.">
   <link rel="canonical" href="https://abdelaaziz0.github.io/">
-  <link rel="icon" href="/assets/img/anubis.png" type="image/png">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/assets/img/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://abdelaaziz0.github.io/">
   <meta property="og:title" content="Abdelaaziz Belkhair | Pentest Web & Active Directory">
   <meta property="og:description"
     content="Portfolio d'Abdelaaziz Belkhair, élève-ingénieur cybersécurité en stage chez Orange Cyberdefense, disponible pour un CDI en pentest Web ou Active Directory.">
-  <meta property="og:image" content="https://abdelaaziz0.github.io/assets/img/anubis.png">
+  <meta property="og:image" content="https://abdelaaziz0.github.io/assets/img/og-card.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Abdelaaziz Belkhair - Pentest Web et Active Directory">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Abdelaaziz Belkhair | Pentest Web & Active Directory">
   <meta name="twitter:description"
     content="Portfolio d'Abdelaaziz Belkhair, élève-ingénieur cybersécurité en stage chez Orange Cyberdefense, disponible pour un CDI en pentest Web ou Active Directory.">
-  <meta name="twitter:image" content="https://abdelaaziz0.github.io/assets/img/anubis.png">
+  <meta name="twitter:image" content="https://abdelaaziz0.github.io/assets/img/og-card.jpg">
+  <meta name="twitter:image:alt" content="Abdelaaziz Belkhair - Pentest Web et Active Directory">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
     integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg=="
@@ -30,12 +36,12 @@
 
 <body>
   <nav class="home-nav" aria-label="Navigation principale">
-    <a class="nav-logo" href="index.html" aria-label="Accueil Abdelaaziz Belkhair"><img src="assets/img/anubis.png"
+    <a class="nav-logo" href="index.html" aria-label="Accueil Abdelaaziz Belkhair"><img src="assets/img/anubis-mark.webp"
         alt="Logo Anubis Abdelaaziz Belkhair"></a>
     <ul class="nav-links">
       <li><a href="#about">Profil</a></li>
-      <li><a href="#work">Travail</a></li>
-      <li><a href="#writeups">Writeups</a></li>
+      <li><a href="projects.html">Travail</a></li>
+      <li><a href="writeups.html">Writeups</a></li>
       <li><a href="blog.html">Articles</a></li>
       <li><a href="#experience">Expérience</a></li>
       <li><a href="#contact">Contact</a></li>
@@ -45,7 +51,7 @@
 
   <main>
     <section class="hero-home" id="home">
-      <img class="hero-mark" src="assets/img/anubis.png" alt="" aria-hidden="true">
+      <img class="hero-mark" src="assets/img/anubis-mark.webp" alt="" aria-hidden="true">
       <div class="hero-inner">
         <h1 class="hero-title">Abdelaaziz Belkhair</h1>
         <p class="hero-copy">
@@ -62,7 +68,7 @@
           <div class="stat-item"><span class="stat-value">Septembre 2026</span><span class="stat-label">Disponible
               CDI</span>
           </div>
-          <div class="stat-item"><span class="stat-value">6</span><span class="stat-label">Outils publiés</span>
+          <div class="stat-item"><span class="stat-value">13</span><span class="stat-label">Projets &amp; outils</span>
           </div>
           <div class="stat-item"><span class="stat-value">Web · AD</span><span class="stat-label">Spécialités</span>
           </div>
@@ -77,25 +83,29 @@
         </div>
       </div>
       <div class="split">
-        <div>
+        <div class="about-copy">
           <p>
-            Je travaille surtout sur des chaînes d'exploitation Web et Active Directory.
+            Je travaille surtout sur les chemins qui transforment un accès limité en impact démontrable : logique
+            applicative, énumération Active Directory, abus d'ACL, délégations Kerberos et AD CS. J'aime documenter
+            les hypothèses, les impasses et les preuves, parce qu'un bon rapport doit permettre de comprendre le risque
+            autant que de le reproduire.
           </p>
-          <div class="domain-stack">
-            <article class="feature-card domain-lead">
-              <h3>Active Directory</h3>
-              <p>C'est là que je passe le plus de temps. Énumération, chemins de privilèges, abus de configurations,
-                AD CS et délégations Kerberos, avec la preuve d'impact en lab comme en mission. Du foothold au
-                Domain Admin.</p>
-            </article>
-            <div class="domain-stack">
-              <article class="feature-card domain-lead">
-                <h3>Pentest Web</h3>
-                <p>Recherche de vulnérabilités, exploitation, analyse du comportement applicatif, validation et
-                  rédaction de rapports.</p>
-              </article>
-            </div>
-          </div>
+          <p>
+            En mission comme en lab, je privilégie les chaînes courtes mais solides : ce qui donne un accès, ce qui le
+            rend exploitable, puis ce qui prouve l'impact sans bruit inutile.
+          </p>
+        </div>
+        <div class="domain-stack">
+          <article class="feature-card domain-lead">
+            <h3>Active Directory</h3>
+            <p>Énumération, chemins de privilèges, abus de configurations, AD CS et délégations Kerberos, avec la preuve
+              d'impact du foothold au contrôle du domaine.</p>
+          </article>
+          <article class="feature-card domain-lead">
+            <h3>Pentest Web</h3>
+            <p>Analyse du comportement applicatif, logique métier, exploitation contrôlée, validation d'impact et
+              rédaction de constats directement actionnables.</p>
+          </article>
         </div>
       </div>
     </section>
@@ -190,29 +200,32 @@
       </div>
       <div class="article-grid">
         <article class="article-card">
-          <h3>Garfield - HTB</h3>
-          <p>Abus de scriptPath, ForceChangePassword, RBCD et ticket RODC forgé. Une chaîne AD assez sèche, mais propre.
-          </p>
-          <div class="tag-row"><span class="mini-tag">HTB</span><span class="mini-tag">Windows AD</span></div>
-          <a href="writeups/garfield.html">Lire</a>
-        </article>
-        <article class="article-card">
-          <h3>Pirate - HTB</h3>
-          <p>Chaîne Active Directory en boîte noire, de l'accès anonyme jusqu'au Domain Admin.</p>
-          <div class="tag-row"><span class="mini-tag">Hard</span><span class="mini-tag">Windows AD</span></div>
-          <a href="writeups/pirate.html">Lire</a>
-        </article>
-        <article class="article-card">
           <h3>Fluffy - HTB</h3>
           <p>Writable share, capture NetNTLMv2, Shadow Credentials et abus AD CS ESC16 jusqu'à Administrator.</p>
-          <div class="tag-row"><span class="mini-tag">HTB</span><span class="mini-tag">AD CS</span></div>
+          <div class="tag-row"><span class="mini-tag">HTB</span><span class="mini-tag">Medium</span><span
+              class="mini-tag">EN</span></div>
           <a href="writeups/fluffy.html">Lire</a>
         </article>
         <article class="article-card">
-          <h3>NanoCorp - HTB</h3>
-          <p>Capture de hash réseau, crack, BloodHound, abus de groupe, WinRM et élévation via service tiers.</p>
-          <div class="tag-row"><span class="mini-tag">HTB</span><span class="mini-tag">Windows AD</span></div>
-          <a href="writeups/nanocorp.html">Lire</a>
+          <h3>Sendai - HTB</h3>
+          <p>SMB null, spray, BloodHound, dump gMSA et AD CS ESC4 jusqu'à Administrator.</p>
+          <div class="tag-row"><span class="mini-tag">HTB</span><span class="mini-tag">Medium</span><span
+              class="mini-tag">FR</span></div>
+          <a href="writeups/sendai.html">Lire</a>
+        </article>
+        <article class="article-card">
+          <h3>DeSynth Recruit - HTB</h3>
+          <p>Client-Side Desync, XSS persistant, path traversal et console Werkzeug jusqu'à RCE.</p>
+          <div class="tag-row"><span class="mini-tag">HTB CTF</span><span class="mini-tag">Medium</span><span
+              class="mini-tag">EN</span></div>
+          <a href="writeups/desynth-recruit.html">Lire</a>
+        </article>
+        <article class="article-card">
+          <h3>Intergalactic Bounty - HTB</h3>
+          <p>Mass assignment, pollution de prototype et gadget template pour écrire puis exécuter côté serveur.</p>
+          <div class="tag-row"><span class="mini-tag">HTB CTF</span><span class="mini-tag">Hard</span><span
+              class="mini-tag">EN</span></div>
+          <a href="writeups/intergalactic-bounty.html">Lire</a>
         </article>
       </div>
       <div class="hero-actions">

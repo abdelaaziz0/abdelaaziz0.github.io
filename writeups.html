@@ -8,18 +8,24 @@
   <meta name="description"
     content="Analyses techniques et writeups CTF d'Abdelaaziz Belkhair: chaînes d'exploitation Web et Active Directory documentées.">
   <link rel="canonical" href="https://abdelaaziz0.github.io/writeups.html">
-  <link rel="icon" href="/assets/img/anubis.png" type="image/png">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/assets/img/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://abdelaaziz0.github.io/writeups.html">
   <meta property="og:title" content="Analyses techniques | Abdelaaziz Belkhair">
   <meta property="og:description"
     content="Analyses techniques et writeups CTF d'Abdelaaziz Belkhair: chaînes d'exploitation Web et Active Directory documentées.">
-  <meta property="og:image" content="https://abdelaaziz0.github.io/assets/img/anubis.png">
+  <meta property="og:image" content="https://abdelaaziz0.github.io/assets/img/og-card.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Abdelaaziz Belkhair - Pentest Web et Active Directory">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Analyses techniques | Abdelaaziz Belkhair">
   <meta name="twitter:description"
     content="Analyses techniques et writeups CTF d'Abdelaaziz Belkhair: chaînes d'exploitation Web et Active Directory documentées.">
-  <meta name="twitter:image" content="https://abdelaaziz0.github.io/assets/img/anubis.png">
+  <meta name="twitter:image" content="https://abdelaaziz0.github.io/assets/img/og-card.jpg">
+  <meta name="twitter:image:alt" content="Abdelaaziz Belkhair - Pentest Web et Active Directory">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
     integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg=="
@@ -30,12 +36,13 @@
 
 <body>
   <nav class="home-nav" aria-label="Navigation principale">
-    <a class="nav-logo" href="index.html" aria-label="Accueil Abdelaaziz Belkhair"><img src="assets/img/anubis.png" alt="Logo Anubis Abdelaaziz Belkhair"></a>
+    <a class="nav-logo" href="index.html" aria-label="Accueil Abdelaaziz Belkhair"><img src="assets/img/anubis-mark.webp" alt="Logo Anubis Abdelaaziz Belkhair"></a>
     <ul class="nav-links">
       <li><a href="index.html#about">Profil</a></li>
       <li><a href="projects.html">Travail</a></li>
       <li><a href="writeups.html" class="active">Writeups</a></li>
       <li><a href="blog.html">Articles</a></li>
+      <li><a href="index.html#experience">Expérience</a></li>
       <li><a href="index.html#contact">Contact</a></li>
       <li><a href="cv.pdf" download>CV</a></li>
     </ul>
@@ -48,8 +55,8 @@
           <h1 class="hero-title">Writeups</h1>
         </div>
         <p>
-          Machines Active Directory en boîte noire, challenges web en boîte blanche, labs de pentest. Du concret, avec
-          les détours qui coûtent du temps.
+          Machines Active Directory en boîte noire, challenges web et labs de pentest. La plupart des writeups publiés
+          sont en anglais, avec quelques analyses en français quand c'est le meilleur format.
         </p>
       </div>
     </section>
@@ -57,143 +64,141 @@
     <section class="page-section">
       <div class="section-head">
         <div>
-          <h2>Active Directory</h2>
+          <h2>Active Directory &amp; Windows</h2>
         </div>
       </div>
       <div class="article-grid">
         <article class="article-card">
-          <span class="mini-tag">Hard</span>
-          <h3>Checkpoint</h3>
-          <p>Restauration d'objet AD supprimé → mouvement latéral → supply chain attack via extension IDE → forensics mémoire VM → Administrator.</p>
-          <a href="writeups/checkpoint.html">Lire</a>
-        </article>
-        <article class="article-card">
-          <span class="mini-tag">Hard</span>
-          <h3>Garfield</h3>
-          <p>Abus d'ACL sur objet AD → ForceChangePassword → auto-ajout à un groupe privilégié → délégation Kerberos → Domain Admin.</p>
-          <a href="writeups/garfield.html">Lire</a>
-        </article>
-        <article class="article-card">
-          <span class="mini-tag">Hard</span>
-          <h3>Pirate</h3>
-          <p>Accès LDAP anonyme → authentification héritée → extraction de compte de service → relai NTLM → délégation contrainte → Domain Admin.</p>
-          <a href="writeups/pirate.html">Lire</a>
-        </article>
-        <article class="article-card">
-          <span class="mini-tag">HTB</span>
-          <h3>NanoCorp</h3>
-          <p>Capture de hash réseau via upload malveillant → crack → énumération BloodHound → abus de groupe → accès WinRM → élévation via service tiers → Administrator.</p>
-          <a href="writeups/nanocorp.html">Lire</a>
-        </article>
-        <article class="article-card">
-          <span class="mini-tag">Medium</span>
           <h3>Fluffy</h3>
-          <p>CVE-2025-24071 via .library-ms dans un partage writable → NetNTLMv2 capturé (Responder) → Shadow
-            Credentials sur winrm_svc → WinRM → Shadow Credentials sur ca_svc → AD CS ESC16 (extension sécurité
-            désactivée) → swap UPN → certificat Administrator.</p>
+          <p>Writable SMB share, CVE-2025-24071, Shadow Credentials and AD CS ESC16 to Administrator.</p>
+          <div class="tag-row"><span class="mini-tag">HTB</span><span class="mini-tag">Medium</span><span
+              class="mini-tag">EN</span></div>
           <a href="writeups/fluffy.html">Lire</a>
         </article>
         <article class="article-card">
-          <span class="mini-tag">Medium</span>
           <h3>Sendai</h3>
-          <p>SMB null → RID brute + spray → null SAMR bind (changepasswd.py) → BloodHound → self-add groupe admsvc →
-            dump gMSA mgtsvc$ → WinRM PtH → credential ImagePath en clair (clifford.davey) → AD CS ESC4 (réécriture
-            template SendaiComputer) → Administrator.</p>
+          <p>SMB null, password reset, BloodHound, gMSA dump and AD CS ESC4 to Administrator.</p>
+          <div class="tag-row"><span class="mini-tag">HTB</span><span class="mini-tag">Medium</span><span
+              class="mini-tag">FR</span></div>
           <a href="writeups/sendai.html">Lire</a>
         </article>
-      </div>
-    </section>
-
-    <section class="page-section">
-      <div class="section-head">
-        <div>
-          <h2>Code review et exploitation web</h2>
-        </div>
-      </div>
-      <div class="article-grid">
         <article class="article-card">
-          <span class="mini-tag">Hard</span>
-          <h3>Nimbus</h3>
-          <p>Linux cloud-focused machine: web entry point, local cloud permissions, internal worker context, and
-            containerized build boundary.</p>
-          <a href="writeups/nimbus.html">Lire</a>
-        </article>
-        <article class="article-card">
-          <span class="mini-tag">Medium</span>
-          <h3>DeSynth Recruit</h3>
-          <p>Client-Side Desync Werkzeug 2.1.0 → XSS persistant déclenché par le navigateur admin → path traversal
-            /api/ipc_download → exfiltration MAC + machine-id → calcul PIN debug (SHA1) → shell interactif /console →
-            RCE.</p>
-          <a href="writeups/desynth-recruit.html">Lire</a>
-        </article>
-        <article class="article-card">
-          <span class="mini-tag">Hard</span>
-          <h3>Intergalactic Bounty</h3>
-          <p>Mass assignment sur création de rôle → pollution de prototype via merge récursif → gadget needle dans le
-            moteur de template → injection SSTI côté serveur → flag.</p>
-          <a href="writeups/intergalactic-bounty.html">Lire</a>
-        </article>
-        <article class="article-card">
-          <span class="mini-tag">Medium</span>
-          <h3>TwoDots Horror</h3>
-          <p>Upload d'un polyglot JPEG/JavaScript → contournement de CSP strict par confusion de type MIME → XSS stocké
-            déclenché dans le contexte admin.</p>
-          <a href="writeups/twodots-horror.html">Lire</a>
-        </article>
-        <article class="article-card">
-          <span class="mini-tag">Hard</span>
-          <h3>SocratesPanel</h3>
-          <p>Empoisonnement de cache CDN → XSS via bot admin → SSRF vers panneau interne → injection de commande → flag.</p>
-          <a href="writeups/socrates.html">Lire</a>
-        </article>
-        <article class="article-card">
-          <span class="mini-tag">Medium</span>
-          <h3>Interstellar</h3>
-          <p>SSRF via abus de sous-domaine → injection de template côté serveur → RCE → flag.</p>
-          <a href="writeups/interstellar.html">Lire</a>
-        </article>
-        <article class="article-card">
-          <span class="mini-tag">Medium</span>
-          <h3>NextPath</h3>
-          <p>Contournement de regex → pollution de paramètre HTTP → traversée de chemin → lecture de fichiers arbitraires.</p>
-          <a href="writeups/nextpath.html">Lire</a>
-        </article>
-        <article class="article-card">
-          <span class="mini-tag">Medium</span>
-          <h3>Dusty Alleys</h3>
-          <p>Bypass de vhost Nginx par manipulation du header Host → SSRF via réflexion d'en-tête dans un sous-service
-            interne → accès à un endpoint non exposé publiquement.</p>
-          <a href="writeups/dusty-alleys.html">Lire</a>
-        </article>
-        <article class="article-card">
-          <span class="mini-tag">Hard</span>
-          <h3>Resizer</h3>
-          <p>Écriture de fichier arbitraire via upload → détournement d'import Python → chargement de bibliothèque malveillante → flag.</p>
-          <a href="writeups/resizer.html">Lire</a>
-        </article>
-      </div>
-    </section>
-
-    <section class="page-section">
-      <div class="section-head">
-        <div>
-          <h2>Active Directory et Windows</h2>
-        </div>
-      </div>
-      <div class="article-grid">
-        <article class="article-card">
-          <span class="mini-tag">Medium</span>
           <h3>AttacktiveDirectory</h3>
-          <p>Énumération Kerberos (Kerbrute) → AS-REP roasting → crack du hash → collecte NTLM (secretsdump) →
-            Pass-the-Hash → Golden Ticket.</p>
+          <p>Kerberos enumeration, AS-REP roasting, NTLM collection, Pass-the-Hash and Golden Ticket.</p>
+          <div class="tag-row"><span class="mini-tag">TryHackMe</span><span class="mini-tag">Medium</span><span
+              class="mini-tag">EN</span></div>
           <a href="writeups/attacktive-directory.html">Lire</a>
         </article>
         <article class="article-card">
-          <span class="mini-tag">Insane</span>
           <h3>crocccrew</h3>
-          <p>Kerberoasting d'un SPN exposé → crack → délégation contrainte avec Protocol Transition → impersonation de
-            l'administrateur de domaine.</p>
+          <p>Kerberoasting, constrained delegation with Protocol Transition and domain admin impersonation.</p>
+          <div class="tag-row"><span class="mini-tag">TryHackMe</span><span class="mini-tag">Insane</span><span
+              class="mini-tag">EN</span></div>
           <a href="writeups/crocccrew.html">Lire</a>
+        </article>
+      </div>
+    </section>
+
+    <section class="page-section">
+      <div class="section-head">
+        <div>
+          <h2>Web &amp; AppSec</h2>
+        </div>
+      </div>
+      <div class="article-grid">
+        <article class="article-card">
+          <h3>DeSynth Recruit</h3>
+          <p>Client-Side Desync, stored XSS, path traversal and Werkzeug console to RCE.</p>
+          <div class="tag-row"><span class="mini-tag">HTB CTF</span><span class="mini-tag">Medium</span><span
+              class="mini-tag">EN</span></div>
+          <a href="writeups/desynth-recruit.html">Lire</a>
+        </article>
+        <article class="article-card">
+          <h3>Intergalactic Bounty</h3>
+          <p>Mass assignment, prototype pollution and template gadget abuse to server-side execution.</p>
+          <div class="tag-row"><span class="mini-tag">HTB CTF</span><span class="mini-tag">Hard</span><span
+              class="mini-tag">EN</span></div>
+          <a href="writeups/intergalactic-bounty.html">Lire</a>
+        </article>
+        <article class="article-card">
+          <h3>TwoDots Horror</h3>
+          <p>JPEG/JavaScript polyglot upload, MIME confusion and stored XSS in the admin context.</p>
+          <div class="tag-row"><span class="mini-tag">HTB CTF</span><span class="mini-tag">Medium</span><span
+              class="mini-tag">EN</span></div>
+          <a href="writeups/twodots-horror.html">Lire</a>
+        </article>
+        <article class="article-card">
+          <h3>Dusty Alleys</h3>
+          <p>Nginx vhost bypass and reflected header SSRF into an internal-only endpoint.</p>
+          <div class="tag-row"><span class="mini-tag">HTB CTF</span><span class="mini-tag">Medium</span><span
+              class="mini-tag">EN</span></div>
+          <a href="writeups/dusty-alleys.html">Lire</a>
+        </article>
+      </div>
+    </section>
+
+    <section class="page-section">
+      <div class="section-head">
+        <div>
+          <h2>À venir</h2>
+        </div>
+        <p>Les cartes restent visibles tant que les machines ou challenges sont actifs, mais les pages ne sont pas
+          indexées avant publication complète.</p>
+      </div>
+      <div class="article-grid">
+        <article class="article-card">
+          <h3>Checkpoint</h3>
+          <p>Machine Active Directory en attente de retrait.</p>
+          <div class="tag-row"><span class="mini-tag">HTB</span><span class="mini-tag">À venir</span></div>
+          <a href="writeups/checkpoint.html">Voir le statut</a>
+        </article>
+        <article class="article-card">
+          <h3>Garfield</h3>
+          <p>Machine Active Directory en attente de retrait.</p>
+          <div class="tag-row"><span class="mini-tag">HTB</span><span class="mini-tag">À venir</span></div>
+          <a href="writeups/garfield.html">Voir le statut</a>
+        </article>
+        <article class="article-card">
+          <h3>Pirate</h3>
+          <p>Machine Active Directory en attente de retrait.</p>
+          <div class="tag-row"><span class="mini-tag">HTB</span><span class="mini-tag">À venir</span></div>
+          <a href="writeups/pirate.html">Voir le statut</a>
+        </article>
+        <article class="article-card">
+          <h3>NanoCorp</h3>
+          <p>Machine Active Directory en attente de retrait.</p>
+          <div class="tag-row"><span class="mini-tag">HTB</span><span class="mini-tag">À venir</span></div>
+          <a href="writeups/nanocorp.html">Voir le statut</a>
+        </article>
+        <article class="article-card">
+          <h3>Nimbus</h3>
+          <p>Machine cloud Linux en attente de retrait.</p>
+          <div class="tag-row"><span class="mini-tag">HTB</span><span class="mini-tag">À venir</span></div>
+          <a href="writeups/nimbus.html">Voir le statut</a>
+        </article>
+        <article class="article-card">
+          <h3>SocratesPanel</h3>
+          <p>Challenge web en attente de clôture.</p>
+          <div class="tag-row"><span class="mini-tag">HTB CTF</span><span class="mini-tag">À venir</span></div>
+          <a href="writeups/socrates.html">Voir le statut</a>
+        </article>
+        <article class="article-card">
+          <h3>Interstellar</h3>
+          <p>Challenge web en attente de clôture.</p>
+          <div class="tag-row"><span class="mini-tag">HTB CTF</span><span class="mini-tag">À venir</span></div>
+          <a href="writeups/interstellar.html">Voir le statut</a>
+        </article>
+        <article class="article-card">
+          <h3>NextPath</h3>
+          <p>Challenge web en attente de clôture.</p>
+          <div class="tag-row"><span class="mini-tag">HTB CTF</span><span class="mini-tag">À venir</span></div>
+          <a href="writeups/nextpath.html">Voir le statut</a>
+        </article>
+        <article class="article-card">
+          <h3>Resizer</h3>
+          <p>Challenge web en attente de clôture.</p>
+          <div class="tag-row"><span class="mini-tag">HTB CTF</span><span class="mini-tag">À venir</span></div>
+          <a href="writeups/resizer.html">Voir le statut</a>
         </article>
       </div>
     </section>

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
@@ -8,16 +8,22 @@
     <meta name="description"
         content="HTB CTF Writeup: TwoDots Horror - JPEG/JavaScript polyglot file to bypass CSP and exfiltrate the admin bot's cookie via stored XSS.">
   <link rel="canonical" href="https://abdelaaziz0.github.io/writeups/twodots-horror.html">
-  <link rel="icon" href="/assets/img/anubis.png" type="image/png">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/assets/img/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://abdelaaziz0.github.io/writeups/twodots-horror.html">
   <meta property="og:title" content="TwoDots Horror - HTB CTF Writeup | Abdelaaziz Belkhair">
   <meta property="og:description" content="HTB CTF Writeup: TwoDots Horror - JPEG/JavaScript polyglot file to bypass CSP and exfiltrate the admin bot's cookie via stored XSS.">
-  <meta property="og:image" content="https://abdelaaziz0.github.io/assets/img/anubis.png">
+  <meta property="og:image" content="https://abdelaaziz0.github.io/assets/img/og-card.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Abdelaaziz Belkhair - Pentest Web et Active Directory">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="TwoDots Horror - HTB CTF Writeup | Abdelaaziz Belkhair">
   <meta name="twitter:description" content="HTB CTF Writeup: TwoDots Horror - JPEG/JavaScript polyglot file to bypass CSP and exfiltrate the admin bot's cookie via stored XSS.">
-  <meta name="twitter:image" content="https://abdelaaziz0.github.io/assets/img/anubis.png">
+  <meta name="twitter:image" content="https://abdelaaziz0.github.io/assets/img/og-card.jpg">
+  <meta name="twitter:image:alt" content="Abdelaaziz Belkhair - Pentest Web et Active Directory">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
         integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg=="
@@ -28,15 +34,16 @@
 <body>
     <header>
         <nav>
-            <a href="../index.html" class="logo" aria-label="Accueil Abdelaaziz Belkhair"><img src="../assets/img/anubis.png" alt="Logo Anubis Abdelaaziz Belkhair"></a>
-            <ul class="nav-links">
-                <li><a href="../index.html#about">Profil</a></li>
-                <li><a href="../projects.html">Travail</a></li>
-                <li><a href="../writeups.html" class="active">Writeups</a></li>
-                <li><a href="../blog.html">Articles</a></li>
-                <li><a href="../index.html#contact">Contact</a></li>
-              <li><a href="../cv.pdf" download>CV</a></li>
-  </ul>
+            <a href="../index.html" class="logo" aria-label="Accueil Abdelaaziz Belkhair"><img src="../assets/img/anubis-mark.webp" alt="Logo Anubis Abdelaaziz Belkhair"></a>
+      <ul class="nav-links">
+        <li><a href="../index.html#about">Profil</a></li>
+        <li><a href="../projects.html">Travail</a></li>
+        <li><a href="../writeups.html" class="active">Writeups</a></li>
+        <li><a href="../blog.html">Articles</a></li>
+        <li><a href="../index.html#experience">Expérience</a></li>
+        <li><a href="../index.html#contact">Contact</a></li>
+        <li><a href="../cv.pdf" download>CV</a></li>
+      </ul>
         </nav>
     </header>
 

@@ -156,7 +156,7 @@ figcaption {
 }
 
 .nav-links a {
-  color: var(--muted-soft);
+  color: var(--muted);
   font-size: 0.8rem;
   font-weight: 400;
   letter-spacing: 0.06em;

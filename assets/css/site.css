@@ -184,28 +184,6 @@ body {
   padding: 1.4rem;
 }
 
-.profile-frame {
-  overflow: hidden;
-  padding: 0;
-}
-
-.profile-frame img {
-  display: block;
-  width: 100%;
-  aspect-ratio: 4 / 5;
-  object-fit: cover;
-}
-
-.profile-caption {
-  padding: 1rem 1.2rem;
-  border-top: 1px solid var(--border);
-  color: var(--muted);
-  font-family: "IBM Plex Mono", monospace;
-  font-size: 0.68rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
 .card-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -528,7 +506,10 @@ body {
   text-transform: uppercase;
 }
 
-/* "Domaines" : 1 bloc principal + 2 secondaires au lieu de 3 cartes egales */
+.about-copy p + p {
+  margin-top: 1rem;
+}
+
 .domain-stack {
   display: flex;
   flex-direction: column;
@@ -547,13 +528,6 @@ body {
   font-family: "DM Serif Display", Georgia, serif;
   font-size: 1.5rem;
   line-height: 1.2;
-}
-
-.domain-pair {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1px;
-  background: var(--border);
 }
 
 @media (max-width: 900px) {
@@ -585,10 +559,6 @@ body {
 
   .facts-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .domain-pair {
-    grid-template-columns: 1fr;
   }
 
   .certs-grid-alt {
