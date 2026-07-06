@@ -8,7 +8,7 @@ body {
   z-index: 100;
   min-height: 56px;
   padding: 0 2rem;
-  background: rgba(13, 15, 20, 0.92);
+  background: rgba(var(--bg-rgb), 0.92);
   border-bottom: 1px solid var(--border);
   backdrop-filter: blur(12px);
   display: flex;
@@ -48,7 +48,7 @@ body {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, rgba(13, 15, 20, 0.96) 0%, rgba(13, 15, 20, 0.82) 42%, rgba(13, 15, 20, 0.35) 100%);
+  background: linear-gradient(90deg, rgba(var(--bg-rgb), 0.96) 0%, rgba(var(--bg-rgb), 0.82) 42%, rgba(var(--bg-rgb), 0.35) 100%);
   opacity: 0.7;
   z-index: -1;
 }
@@ -122,13 +122,13 @@ body {
 }
 
 .button-primary {
-  border-color: rgba(232, 213, 163, 0.35);
-  background: rgba(232, 213, 163, 0.08);
+  border-color: rgba(var(--accent-rgb), 0.35);
+  background: rgba(var(--accent-rgb), 0.08);
   color: var(--accent);
 }
 
 .button:hover {
-  border-color: rgba(232, 213, 163, 0.45);
+  border-color: rgba(var(--accent-rgb), 0.45);
   color: var(--accent);
 }
 
@@ -232,7 +232,7 @@ body {
   display: inline-flex;
   align-items: center;
   padding: 0.18rem 0.55rem;
-  border: 1px solid rgba(232, 213, 163, 0.2);
+  border: 1px solid rgba(var(--accent-rgb), 0.2);
   border-radius: 2px;
   color: var(--accent);
   font-family: "IBM Plex Mono", monospace;
@@ -310,8 +310,8 @@ body {
 }
 
 .icon-link:hover {
-  border-color: rgba(232, 213, 163, 0.45);
-  background: rgba(232, 213, 163, 0.08);
+  border-color: rgba(var(--accent-rgb), 0.45);
+  background: rgba(var(--accent-rgb), 0.08);
   color: var(--accent);
 }
 
@@ -331,7 +331,7 @@ body {
 
 .cert-card-old:hover {
   transform: translateY(-3px);
-  border-color: rgba(232, 213, 163, 0.35);
+  border-color: rgba(var(--accent-rgb), 0.35);
 }
 
 .cert-card-old img {
@@ -467,7 +467,7 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(232, 213, 163, 0.2);
+  border: 1px solid rgba(var(--accent-rgb), 0.2);
   border-radius: 4px;
   color: var(--accent-2);
   background: var(--code-bg);
@@ -532,7 +532,7 @@ body {
 
 @media (max-width: 900px) {
   .hero-home::before {
-    background: linear-gradient(90deg, rgba(13, 15, 20, 0.96), rgba(13, 15, 20, 0.82));
+    background: linear-gradient(90deg, rgba(var(--bg-rgb), 0.96), rgba(var(--bg-rgb), 0.82));
   }
 
   .hero-mark {

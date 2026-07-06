@@ -1,0 +1,367 @@
+body.manual-page {
+  background:
+    radial-gradient(circle at 50% -20%, rgba(var(--blue-rgb), 0.12), transparent 34rem),
+    var(--bg);
+}
+
+body.manual-page::before {
+  opacity: 0.45;
+}
+
+.manual-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 200;
+  width: 100%;
+  height: 2px;
+  transform: scaleX(0);
+  transform-origin: left;
+  background: linear-gradient(90deg, var(--accent-2), var(--accent), var(--green));
+}
+
+.manual-shell {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(170px, 240px) minmax(0, 820px);
+  gap: clamp(2rem, 5vw, 5rem);
+  width: min(1240px, 100%);
+  margin: 0 auto;
+  padding: 2rem 2rem 6rem;
+}
+
+.manual-rail {
+  position: sticky;
+  top: 5rem;
+  align-self: start;
+  max-height: calc(100vh - 7rem);
+  overflow-y: auto;
+  padding: 0.35rem 0 0.35rem 1rem;
+  border-left: 1px solid var(--border);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.manual-rail::-webkit-scrollbar {
+  width: 6px;
+}
+
+.manual-rail::-webkit-scrollbar-thumb {
+  background: var(--border);
+}
+
+.manual-toc {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+}
+
+.manual-toc a {
+  display: block;
+  padding: 0.24rem 0;
+  color: var(--muted-soft);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.68rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.manual-toc a:hover,
+.manual-toc a.active {
+  color: var(--accent);
+}
+
+.manual-toc a.depth-2 {
+  padding-left: 0.85rem;
+  color: var(--muted);
+  font-size: 0.64rem;
+}
+
+.manual-document {
+  min-width: 0;
+}
+
+.manual-back {
+  display: inline-flex;
+  margin-bottom: 3rem;
+}
+
+.manual-content {
+  min-width: 0;
+}
+
+.manual-content > h1:first-child {
+  max-width: 760px;
+  margin: 0 0 0.55rem;
+  color: var(--text-strong);
+  font-family: "DM Sans", system-ui, sans-serif;
+  font-size: 2.55rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.08;
+}
+
+.manual-content > h1:first-child + h2 {
+  margin: 0 0 2.6rem;
+  padding: 0 0 1.5rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.82rem;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  line-height: 1.5;
+}
+
+.manual-content > h1:not(:first-child) {
+  scroll-margin-top: 5.5rem;
+  margin: 4.5rem 0 1.3rem;
+  padding-top: 1.6rem;
+  border-top: 1px solid var(--border);
+  color: var(--text-strong);
+  font-family: "DM Sans", system-ui, sans-serif;
+  font-size: 2.05rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.18;
+}
+
+.manual-content > h2:not(:first-child) {
+  scroll-margin-top: 5.5rem;
+  margin: 3rem 0 1rem;
+  padding: 0;
+  border: 0;
+  color: var(--accent);
+  font-family: "DM Sans", system-ui, sans-serif;
+  font-size: 1.05rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.4;
+}
+
+.manual-content h3 {
+  scroll-margin-top: 5.5rem;
+}
+
+.manual-content p {
+  max-width: 740px;
+  color: var(--text);
+}
+
+.manual-content hr {
+  height: 1px;
+  margin: 3.2rem 0;
+  border: 0;
+  background: var(--border);
+}
+
+.manual-content ul,
+.manual-content ol {
+  max-width: 740px;
+}
+
+.manual-content li::marker {
+  color: var(--accent-2);
+}
+
+.manual-content pre {
+  position: relative;
+  margin: 1.2rem 0 1.6rem;
+  padding: 1rem 1.1rem;
+  border-color: rgba(var(--blue-rgb), 0.18);
+  background:
+    linear-gradient(180deg, rgba(var(--blue-rgb), 0.05), transparent 5rem),
+    var(--code-bg);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+.manual-content pre.has-copy {
+  padding-right: 3.3rem;
+}
+
+.manual-content pre code {
+  display: block;
+  color: var(--code-text);
+  font-size: 0.76rem;
+  line-height: 1.68;
+  white-space: pre;
+}
+
+.manual-copy,
+.manual-top {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.manual-copy {
+  position: absolute;
+  top: 0.7rem;
+  right: 0.7rem;
+  width: 2rem;
+  height: 2rem;
+}
+
+.manual-copy svg,
+.manual-top svg {
+  width: 0.95rem;
+  height: 0.95rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.manual-copy:hover,
+.manual-copy:focus-visible,
+.manual-top:hover,
+.manual-top:focus-visible {
+  border-color: rgba(var(--accent-rgb), 0.42);
+  background: var(--surface);
+  color: var(--accent);
+  outline: 0;
+}
+
+.manual-copy.is-copied {
+  border-color: rgba(var(--green-rgb), 0.35);
+  color: var(--green);
+}
+
+.manual-top {
+  position: fixed;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  z-index: 120;
+  width: 2.4rem;
+  height: 2.4rem;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.manual-top.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.manual-content blockquote {
+  max-width: 740px;
+}
+
+.manual-content table {
+  min-width: 680px;
+}
+
+.manual-content a[id] {
+  scroll-margin-top: 5.5rem;
+}
+
+@media (min-width: 1360px) {
+  .manual-shell {
+    grid-template-columns: minmax(190px, 260px) minmax(0, 880px);
+  }
+}
+
+@media (max-width: 980px) {
+  .manual-shell {
+    display: block;
+    padding: 1.4rem 1.25rem 5rem;
+  }
+
+  .manual-rail {
+    position: sticky;
+    top: 52px;
+    z-index: 80;
+    max-height: none;
+    margin: -1.4rem -1.25rem 2.2rem;
+    padding: 0.65rem 1.25rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-left: 0;
+    border-bottom: 1px solid var(--border);
+    background: rgba(var(--bg-rgb), 0.94);
+    backdrop-filter: blur(12px);
+  }
+
+  .manual-toc {
+    flex-direction: row;
+    gap: 1rem;
+    min-width: max-content;
+  }
+
+  .manual-toc a,
+  .manual-toc a.depth-2 {
+    padding: 0;
+    white-space: nowrap;
+  }
+
+  .manual-toc a.depth-2 {
+    padding-left: 0;
+  }
+
+  .manual-back {
+    margin-bottom: 2rem;
+  }
+}
+
+@media (max-width: 700px) {
+  .manual-shell {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .manual-rail {
+    top: 5.7rem;
+    margin-left: -1rem;
+    margin-right: -1rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .manual-content > h1:first-child {
+    font-size: 2.15rem;
+  }
+
+  .manual-content > h1:first-child + h2 {
+    margin-bottom: 2.1rem;
+    padding-bottom: 1.2rem;
+  }
+
+  .manual-content > h1:not(:first-child) {
+    margin-top: 3.4rem;
+    font-size: 1.42rem;
+  }
+
+  .manual-content pre {
+    margin-left: -0.35rem;
+    margin-right: -0.35rem;
+    padding: 0.9rem;
+  }
+
+  .manual-content pre.has-copy {
+    padding-right: 0.9rem;
+    padding-top: 3.1rem;
+  }
+
+  .manual-copy {
+    top: 0.6rem;
+    left: 0.9rem;
+    right: auto;
+  }
+
+  .manual-top {
+    right: 1rem;
+    bottom: 1rem;
+  }
+}

@@ -32,12 +32,17 @@
     crossorigin="anonymous" referrerpolicy="no-referrer">
   <link rel="stylesheet" href="assets/css/writeup.css">
   <link rel="stylesheet" href="assets/css/site.css">
+  <script src="assets/js/theme.js"></script>
 </head>
 
 <body>
   <nav class="home-nav" aria-label="Navigation principale">
     <a class="nav-logo" href="index.html" aria-label="Accueil Abdelaaziz Belkhair"><img src="assets/img/anubis-mark.webp"
         alt="Logo Anubis Abdelaaziz Belkhair"></a>
+      <button class="theme-toggle" type="button" aria-label="Activer le mode clair">
+        <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"></path></svg>
+        <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.5 6.5 0 0 0 9.8 9.8z"></path></svg>
+      </button>
     <ul class="nav-links">
       <li><a href="#about">Profil</a></li>
       <li><a href="projects.html">Travail</a></li>
@@ -162,15 +167,25 @@
           </div>
         </article>
         <article class="project-card-alt">
-          <h3>Net-Aware Auth Auditor</h3>
-          <p>Reconnaissance AD pour audit interne : signaux Kerberos/LDAP, comptes de service candidats et vérifications
-            manuelles à prioriser.</p>
+          <h3>PyWSUS-Relay</h3>
+          <p>Fork PyWSUS pour labs AD : WSUS-over-HTTP contrôlé, capture NTLM, relais HTTP et validation/émission AD CS
+            Web Enrollment.</p>
           <div class="tag-row">
-            <span class="mini-tag">Python</span><span class="mini-tag">Scapy</span><span class="mini-tag">AD</span>
+            <span class="mini-tag">Python</span><span class="mini-tag">WSUS</span><span class="mini-tag">AD CS</span>
           </div>
           <div class="project-links-alt">
-            <a class="icon-link" href="https://github.com/abdelaaziz0/Net-Aware-Aut-Auditor" target="_blank"
-              rel="noopener" aria-label="GitHub Net-Aware Auth Auditor"><i class="fab fa-github"></i></a>
+            <a class="icon-link" href="projects/pywsus-relay.html" aria-label="Présentation technique PyWSUS-Relay"
+              title="Présentation technique">
+              <svg class="tech-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M7 3.5h7l4 4v13H7z"></path>
+                <path d="M14 3.5v4h4"></path>
+                <path d="M9.5 13.2 7.8 15l1.7 1.8"></path>
+                <path d="M14.5 13.2l1.7 1.8-1.7 1.8"></path>
+                <path d="m12.8 12.7-1.6 4.6"></path>
+              </svg>
+            </a>
+            <a class="icon-link" href="https://github.com/abdelaaziz0/pyWSUS-relay" target="_blank" rel="noopener"
+              aria-label="GitHub PyWSUS-Relay"><i class="fab fa-github"></i></a>
           </div>
         </article>
         <article class="project-card-alt">
@@ -241,10 +256,10 @@
       </div>
       <div class="article-grid">
         <article class="article-card">
-          <span class="mini-tag">Red Team</span>
-          <h3>Red Team Ops, reconnaissance puis persistance</h3>
-          <p>C2 (Sliver, Havoc, Brute Ratel), AMSI bypass, ETW patching, syscalls directs et OPSEC terrain.</p>
-          <a href="blog/red-team-ops.html">Lire</a>
+          <span class="mini-tag">Containers</span>
+          <h3>Container Escape</h3>
+          <p>Primitives, gates and failure points for container boundary analysis.</p>
+          <a href="blog/container-escape.html">Lire</a>
         </article>
         <article class="article-card">
           <span class="mini-tag">Active Directory</span>

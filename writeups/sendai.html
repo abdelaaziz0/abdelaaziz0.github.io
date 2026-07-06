@@ -28,6 +28,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap"
     rel="stylesheet">
+  <script src="../assets/js/theme.js"></script>
   <link rel="stylesheet" href="../assets/css/writeup.css"></head>
 
 <body>
@@ -35,6 +36,10 @@
   <header>
   <nav>
     <a class="nav-logo" href="../index.html" aria-label="Accueil Abdelaaziz Belkhair"><img src="../assets/img/anubis-mark.webp" alt="Logo Anubis Abdelaaziz Belkhair"></a>
+      <button class="theme-toggle" type="button" aria-label="Activer le mode clair">
+        <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"></path></svg>
+        <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.5 6.5 0 0 0 9.8 9.8z"></path></svg>
+      </button>
       <ul class="nav-links">
         <li><a href="../index.html#about">Profil</a></li>
         <li><a href="../projects.html">Travail</a></li>
@@ -335,7 +340,7 @@ Thomas.Powell, mgtsvc$ (gMSA)</code></pre>
 
       <figure style="margin: 1.6rem 0;">
         <img src="img/bh-sendai-thomas.png" alt="BloodHound -thomas.powell memberships"
-          style="width:100%; border-radius:6px; border:1px solid rgba(255,255,255,.08);">
+          style="width:100%; border-radius:6px; border:1px solid var(--border);">
         <figcaption style="margin-top:.6rem; font-size:.8rem; opacity:.6; font-style:italic;">
           BloodHound -graphe depuis <code>thomas.powell</code>.
           Il est membre de <code>support</code>, et <code>support</code> a <code>GenericAll</code>
@@ -423,7 +428,7 @@ Users      READ</code></pre>
 
       <figure style="margin: 1.6rem 0;">
         <img src="img/bh-sendai-mgtsvc.png" alt="BloodHound -mgtsvc$ memberships"
-          style="width:100%; border-radius:6px; border:1px solid rgba(255,255,255,.08);">
+          style="width:100%; border-radius:6px; border:1px solid var(--border);">
         <figcaption style="margin-top:.6rem; font-size:.8rem; opacity:.6; font-style:italic;">
           BloodHound -<code>mgtsvc$</code> est membre de <code>Domain Computers</code> et de
           <code>Remote Management Users</code>. Cette dernière appartenance rend le Pass-the-Hash possible via WinRM
@@ -507,7 +512,7 @@ PS C:\Users\mgtsvc$\Documents> type C:/user.txt
 
       <figure style="margin: 1.6rem 0;">
         <img src="img/bh-sendai-clifford.png" alt="BloodHound -clifford.davey memberships"
-          style="width:100%; border-radius:6px; border:1px solid rgba(255,255,255,.08);">
+          style="width:100%; border-radius:6px; border:1px solid var(--border);">
         <figcaption style="margin-top:.6rem; font-size:.8rem; opacity:.6; font-style:italic;">
           BloodHound -<code>clifford.davey</code> est membre de <code>ca-operators</code> (via
           <code>Domain Users</code> → <code>staff</code> → <code>ca-operators</code>).

@@ -19,7 +19,7 @@
   align-items: center;
   gap: 0.45rem;
   padding: 0.25rem 0.7rem;
-  border: 1px solid rgba(232, 213, 163, 0.25);
+  border: 1px solid rgba(var(--accent-rgb), 0.25);
   border-radius: 2px;
   color: var(--accent);
   font-family: "IBM Plex Mono", monospace;
@@ -37,20 +37,20 @@
 .article-tag.kev,
 .warning {
   color: var(--red);
-  border-color: rgba(224, 92, 92, 0.3);
+  border-color: rgba(var(--red-rgb), 0.3);
 }
 
 .article-tag.windows,
 .article-tag.mitre,
 .article-tag.modular {
   color: var(--blue);
-  border-color: rgba(91, 143, 214, 0.3);
+  border-color: rgba(var(--blue-rgb), 0.3);
 }
 
 .article-tag.success,
 .success {
   color: var(--green);
-  border-color: rgba(76, 175, 125, 0.3);
+  border-color: rgba(var(--green-rgb), 0.3);
 }
 
 .article-hero h1,
@@ -176,7 +176,7 @@
   display: inline-flex;
   align-items: center;
   padding: 0.35rem 0.7rem;
-  border: 1px solid rgba(232, 213, 163, 0.25);
+  border: 1px solid rgba(var(--accent-rgb), 0.25);
   border-radius: 2px;
   color: var(--text);
   font-family: "IBM Plex Mono", monospace;
@@ -185,7 +185,7 @@
 
 .attack-path-node.target {
   color: var(--red);
-  border-color: rgba(224, 92, 92, 0.35);
+  border-color: rgba(var(--red-rgb), 0.35);
 }
 
 .attack-path-arrow {
