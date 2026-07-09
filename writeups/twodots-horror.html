@@ -97,7 +97,6 @@
                     <li><a href="#s7">Full Attack Chain</a></li>
                     <li><a href="#s8">Why Other Approaches Failed</a></li>
                     <li><a href="#s9">Key Takeaways</a></li>
-                    <li><a href="#s10">Remediation</a></li>
                 </ol>
             </nav>
 
@@ -380,35 +379,74 @@ return res.sendFile(avatar);</code></pre>
 
                 <h3>The Polyglot Structure</h3>
 
-                <pre><code>┌──────────┬─────────┬──────────────────────────────────────────┐
-│ Offset   │ Hex     │ Dual Interpretation                      │
-├──────────┼─────────┼──────────────────────────────────────────┤
-│ 0-1      │ FF D8   │ JPEG: Start of Image (SOI)               │
-│          │         │ JS:   ÿØ (start of identifier)           │
-├──────────┼─────────┼──────────────────────────────────────────┤
-│ 2-3      │ FF E0   │ JPEG: APP0 marker                        │
-│          │         │ JS:   ÿà (identifier → ÿØÿà)            │
-├──────────┼─────────┼──────────────────────────────────────────┤
-│ 4-5      │ 2F 2A   │ JPEG: APP0 length = 12074 bytes          │
-│          │         │ JS:   /* (opens block comment)            │
-├──────────┼─────────┼──────────────────────────────────────────┤
-│ 6-12077  │ ...     │ JPEG: JFIF header + null padding         │
-│          │         │ JS:   inside block comment (ignored)      │
-├──────────┼─────────┼──────────────────────────────────────────┤
-│ 12078+   │ FF FE   │ JPEG: Comment segment marker             │
-│          │ ...     │ Comment data contains:                    │
-│          │         │ JS: */=1; XSS_PAYLOAD; /*                 │
-├──────────┼─────────┼──────────────────────────────────────────┤
-│ ...      │ ...     │ JPEG: Real image data (120×120)           │
-│          │         │ JS:   inside block comment (ignored)      │
-├──────────┼─────────┼──────────────────────────────────────────┤
-│ End-4    │ 2A 2F   │ JS:   */ (close final block comment)      │
-├──────────┼─────────┼──────────────────────────────────────────┤
-│ End-2    │ 2F 2F   │ JS:   // (single-line comment)            │
-├──────────┼─────────┼──────────────────────────────────────────┤
-│ End      │ FF D9   │ JPEG: End of Image (EOI)                  │
-│          │         │ JS:   commented out by //                  │
-└──────────┴─────────┴──────────────────────────────────────────┘</code></pre>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Offset</th>
+                                <th>Hex</th>
+                                <th>JPEG interpretation</th>
+                                <th>JavaScript interpretation</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>0-1</td>
+                                <td><code>FF D8</code></td>
+                                <td>Start of Image (SOI)</td>
+                                <td><code>ÿØ</code>, start of identifier</td>
+                            </tr>
+                            <tr>
+                                <td>2-3</td>
+                                <td><code>FF E0</code></td>
+                                <td>APP0 marker</td>
+                                <td><code>ÿà</code>, continuing the identifier</td>
+                            </tr>
+                            <tr>
+                                <td>4-5</td>
+                                <td><code>2F 2A</code></td>
+                                <td>APP0 length = 12074 bytes</td>
+                                <td><code>/*</code>, opens a block comment</td>
+                            </tr>
+                            <tr>
+                                <td>6-12077</td>
+                                <td><code>...</code></td>
+                                <td>JFIF header + null padding</td>
+                                <td>Ignored inside the block comment</td>
+                            </tr>
+                            <tr>
+                                <td>12078+</td>
+                                <td><code>FF FE</code></td>
+                                <td>JPEG comment segment marker</td>
+                                <td>Comment payload contains <code>*/=1; XSS_PAYLOAD; /*</code></td>
+                            </tr>
+                            <tr>
+                                <td>Image data</td>
+                                <td><code>...</code></td>
+                                <td>Real 120x120 JPEG content</td>
+                                <td>Still hidden inside comments</td>
+                            </tr>
+                            <tr>
+                                <td>End-4</td>
+                                <td><code>2A 2F</code></td>
+                                <td>Trailing bytes</td>
+                                <td><code>*/</code>, closes the final block comment</td>
+                            </tr>
+                            <tr>
+                                <td>End-2</td>
+                                <td><code>2F 2F</code></td>
+                                <td>Trailing bytes</td>
+                                <td><code>//</code>, starts a line comment</td>
+                            </tr>
+                            <tr>
+                                <td>End</td>
+                                <td><code>FF D9</code></td>
+                                <td>End of Image (EOI)</td>
+                                <td>Commented out by <code>//</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
 
                 <p>When Chrome loads this file as JavaScript with <code>charset="ISO-8859-1"</code>, it effectively
                     parses:</p>
@@ -556,33 +594,54 @@ flag=HTB{REDACTED}</code></pre>
 
                 <h2 id="s7">7. Full Attack Chain</h2>
 
-                <pre><code>┌─────────────────────────────────────────────────────────────────────┐
-│                  TWODOTS HORROR - FULL KILL CHAIN                   │
-├──────────┬──────────────────────────────────────────────────────────┤
-│ Step 1   │ Register + Login                                        │
-│          │ Create account, get JWT session cookie                   │
-├──────────┼──────────────────────────────────────────────────────────┤
-│ Step 2   │ Craft JPEG/JS Polyglot                                  │
-│          │ APP0 length = 0x2F2A ("/*") opens JS block comment      │
-│          │ JPEG comment embeds: */=1; document.location...; /*     │
-│          │ Real 120×120 JPEG segments appended, ends with *///FFD9 │
-├──────────┼──────────────────────────────────────────────────────────┤
-│ Step 3   │ Upload Polyglot as Avatar                               │
-│          │ Passes is-jpg (FF D8 FF magic), passes image-size       │
-│          │ Saved as MD5 hash → served as application/octet-stream  │
-├──────────┼──────────────────────────────────────────────────────────┤
-│ Step 4   │ Submit XSS Post                                         │
-│          │ &lt;script charset="ISO-8859-1" src="/api/avatar/test"&gt;    │
-│          │ &lt;/script&gt;..                                             │
-│          │ Same-origin script → CSP allows, 2 dots → filter passes │
-├──────────┼──────────────────────────────────────────────────────────┤
-│ Step 5   │ Bot visits /review → Payload fires                      │
-│          │ |safe renders script tag as raw HTML                     │
-│          │ Polyglot executes → document.location redirects bot     │
-│          │ Cookie exfiltrated to listener via URL parameter         │
-├──────────┼──────────────────────────────────────────────────────────┤
-│ Step 6   │ Base64 decode → Flag captured           │
-└──────────┴──────────────────────────────────────────────────────────┘</code></pre>
+                <div class="flow-chain">
+                    <div class="flow-step">
+                        <div>
+                            <span class="flow-kicker">Step 1</span>
+                            <h3>Register + login</h3>
+                            <p>Create an account and get a JWT-backed session cookie.</p>
+                        </div>
+                    </div>
+                    <div class="flow-step">
+                        <div>
+                            <span class="flow-kicker">Step 2</span>
+                            <h3>Craft JPEG/JS polyglot</h3>
+                            <p>Use <code>0x2F2A</code> as the APP0 length so JavaScript sees <code>/*</code>, then
+                                embed the redirect payload in a JPEG comment segment.</p>
+                        </div>
+                    </div>
+                    <div class="flow-step">
+                        <div>
+                            <span class="flow-kicker">Step 3</span>
+                            <h3>Upload as avatar</h3>
+                            <p>The file passes <code>is-jpg</code> and <code>image-size</code>, then gets served as
+                                <code>application/octet-stream</code> without an extension.</p>
+                        </div>
+                    </div>
+                    <div class="flow-step">
+                        <div>
+                            <span class="flow-kicker">Step 4</span>
+                            <h3>Submit XSS post</h3>
+                            <p>A same-origin script tag with <code>charset="ISO-8859-1"</code> passes CSP and the
+                                two-dot filter.</p>
+                        </div>
+                    </div>
+                    <div class="flow-step">
+                        <div>
+                            <span class="flow-kicker">Step 5</span>
+                            <h3>Bot executes payload</h3>
+                            <p><code>|safe</code> renders the script tag, the polyglot executes, and
+                                <code>document.location</code> exfiltrates the bot cookie.</p>
+                        </div>
+                    </div>
+                    <div class="flow-step">
+                        <div>
+                            <span class="flow-kicker">Step 6</span>
+                            <h3>Decode flag</h3>
+                            <p>The exfiltrated base64 value decodes to the captured flag.</p>
+                        </div>
+                    </div>
+                </div>
 
                 <h2 id="s8">8. Why Other Approaches Failed</h2>
 
@@ -675,58 +734,6 @@ flag=HTB{REDACTED}</code></pre>
                         </tr>
                     </tbody>
                 </table>
-
-                <h2 id="s10">10. Remediation</h2>
-
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Vulnerability</th>
-                            <th>Fix</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>XSS via <code>|safe</code></td>
-                            <td>Remove <code>|safe</code> from <code>review.html</code>. If raw HTML is needed, sanitize
-                                with DOMPurify before storage.</td>
-                        </tr>
-                        <tr>
-                            <td>Missing file extension</td>
-                            <td>Append <code>.jpg</code> to uploads: <code>file.md5 + '.jpg'</code>. Ensures
-                                <code>Content-Type: image/jpeg</code>, which Chrome blocks as a script source.
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>Weak JPEG validation</td>
-                            <td>Re-encode uploaded images server-side, stripping all non-image data. Or validate the
-                                full file structure.</td>
-                        </tr>
-                        <tr>
-                            <td>CSP bypassed via <code>'self'</code></td>
-                            <td>Use <code>script-src</code> with nonces instead of <code>'self'</code> when the server
-                                hosts user uploads.</td>
-                        </tr>
-                        <tr>
-                            <td>Cookie without <code>httpOnly</code></td>
-                            <td>Set the <code>httpOnly</code> flag on sensitive cookies to prevent
-                                <code>document.cookie</code> access.
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>No MIME enforcement</td>
-                            <td>Add <code>X-Content-Type-Options: nosniff</code> header to prevent script execution of
-                                non-JS MIME types.</td>
-                        </tr>
-                    </tbody>
-                </table>
-
-                <div class="pwned-banner">
-                    <span class="pwned-icon"><i class="fas fa-flag"></i></span>
-                    <div class="pwned-text">Machine Pwned</div>
-                    <p class="pwned-sub">Stored XSS → JPEG/JS Polyglot → CSP Bypass → Cookie Exfiltration via Navigation
-                    </p>
-                </div>
 
             </div>
         </article>

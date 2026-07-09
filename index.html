@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Abdelaaziz Belkhair | Pentest Web & Active Directory</title>
+  <title>Abdelaaziz Belkhair</title>
   <meta name="robots" content="index, follow">
   <meta name="description" content="Portfolio d'Abdelaaziz Belkhair, pentest Web et Active Directory.">
   <link rel="canonical" href="https://abdelaaziz0.github.io/">
@@ -27,396 +27,1103 @@
   <meta name="twitter:image" content="https://abdelaaziz0.github.io/assets/img/og-card.jpg">
   <meta name="twitter:image:alt" content="Abdelaaziz Belkhair - Pentest Web et Active Directory">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
-    integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg=="
-    crossorigin="anonymous" referrerpolicy="no-referrer">
-  <link rel="stylesheet" href="assets/css/writeup.css">
-  <link rel="stylesheet" href="assets/css/site.css">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap"
+    rel="stylesheet">
+  <style>
+    /* ============================================================
+       Design tokens (Cursor-inspired editorial system)
+       ============================================================ */
+    :root {
+      color-scheme: dark;
+      --primary: #f97a3c;
+      --primary-active: #ff9257;
+      --on-primary: #1b190f;
+      --ink: #f2f1ea;
+      --body: #b8b5aa;
+      --muted: #8f8c81;
+      --muted-soft: #6f6d63;
+      --hairline: #2e2d26;
+      --hairline-soft: #262520;
+      --hairline-strong: #45443b;
+      --canvas: #15140f;
+      --canvas-soft: #1b1a14;
+      --surface-card: #1e1d17;
+      --surface-strong: #2c2b23;
+
+      --font-sans: "Inter", system-ui, "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --font-mono: "JetBrains Mono", "Fira Code", monospace;
+
+      --sp-xxs: 4px;
+      --sp-xs: 8px;
+      --sp-sm: 12px;
+      --sp-base: 16px;
+      --sp-md: 20px;
+      --sp-lg: 24px;
+      --sp-xl: 32px;
+      --sp-xxl: 48px;
+      --sp-section: 80px;
+
+      --r-xs: 4px;
+      --r-sm: 6px;
+      --r-md: 8px;
+      --r-lg: 12px;
+      --r-pill: 9999px;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html {
+        scroll-behavior: auto;
+      }
+    }
+
+    body {
+      background: var(--canvas);
+      color: var(--body);
+      font-family: var(--font-sans);
+      font-size: 16px;
+      font-weight: 400;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    ::selection {
+      background: rgba(249, 122, 60, 0.28);
+    }
+
+    /* ---- typography tiers ---- */
+    .display-mega {
+      font-size: clamp(40px, 7vw, 68px);
+      font-weight: 400;
+      line-height: 1.1;
+      letter-spacing: 0;
+      color: var(--ink);
+    }
+
+    .display-lg {
+      font-size: clamp(27px, 4vw, 34px);
+      font-weight: 400;
+      line-height: 1.2;
+      letter-spacing: 0;
+      color: var(--ink);
+    }
+
+    .title-md {
+      font-size: 18px;
+      font-weight: 600;
+      line-height: 1.4;
+      color: var(--ink);
+    }
+
+    .caption-uppercase {
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1.4;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow {
+      display: inline-block;
+      color: var(--muted);
+      margin-bottom: var(--sp-sm);
+    }
+
+    code,
+    .mono {
+      font-family: var(--font-mono);
+    }
+
+    a {
+      color: var(--ink);
+    }
+
+    /* ============================================================
+       Layout primitives
+       ============================================================ */
+    .wrap {
+      width: min(1120px, 100%);
+      margin: 0 auto;
+      padding: 0 var(--sp-lg);
+    }
+
+    section.band {
+      padding: var(--sp-section) 0;
+      border-top: 1px solid var(--hairline);
+    }
+
+    .section-head {
+      max-width: 680px;
+      margin-bottom: var(--sp-xxl);
+    }
+
+    .section-head p {
+      margin-top: var(--sp-base);
+      font-size: 17px;
+    }
+
+    /* ============================================================
+       Buttons
+       ============================================================ */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--sp-xs);
+      font-family: var(--font-sans);
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 1;
+      text-decoration: none;
+      border-radius: var(--r-md);
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: var(--on-primary);
+      padding: 11px 18px;
+      height: 40px;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-active);
+    }
+
+    .btn-download {
+      background: var(--ink);
+      color: var(--canvas);
+      padding: 13px 20px;
+      height: 44px;
+    }
+
+    .btn-download:hover {
+      background: #e2e0d6;
+    }
+
+    .btn-secondary {
+      background: var(--surface-card);
+      color: var(--ink);
+      border-color: var(--hairline-strong);
+      padding: 10px 17px;
+      height: 40px;
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--muted);
+    }
+
+    .btn-text {
+      background: transparent;
+      color: var(--ink);
+      padding: 10px 4px;
+    }
+
+    .btn-text:hover {
+      color: var(--primary);
+    }
+
+    /* ============================================================
+       Top nav
+       ============================================================ */
+    .top-nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      height: 64px;
+      background: rgba(21, 20, 15, 0.85);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--hairline);
+    }
+
+    .top-nav .wrap {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--sp-lg);
+    }
+
+    .wordmark {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: 0;
+      color: var(--ink);
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .wordmark .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: var(--r-pill);
+      background: var(--primary);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-lg);
+      list-style: none;
+    }
+
+    .nav-links a {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--body);
+      text-decoration: none;
+      transition: color 0.15s ease;
+    }
+
+    .nav-links a:hover {
+      color: var(--ink);
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-base);
+    }
+
+    .nav-toggle {
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 6px;
+    }
+
+    .nav-toggle span {
+      width: 22px;
+      height: 2px;
+      background: var(--ink);
+      border-radius: 2px;
+    }
+
+    /* ============================================================
+       Hero
+       ============================================================ */
+    .hero {
+      padding: 104px 0 var(--sp-section);
+      text-align: center;
+    }
+
+    .hero .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--sp-xs);
+      background: var(--surface-strong);
+      color: var(--ink);
+      border-radius: var(--r-pill);
+      padding: 5px 12px;
+      margin-bottom: var(--sp-lg);
+    }
+
+    .hero .badge .live {
+      width: 7px;
+      height: 7px;
+      border-radius: var(--r-pill);
+      background: var(--primary);
+    }
+
+    .hero h1 {
+      max-width: 760px;
+      margin: 0 auto var(--sp-lg);
+    }
+
+    .hero .lede {
+      max-width: 600px;
+      margin: 0 auto var(--sp-xl);
+      font-size: 18px;
+      color: var(--body);
+      line-height: 1.6;
+    }
+
+    .hero-actions {
+      display: flex;
+      justify-content: center;
+      gap: var(--sp-sm);
+      flex-wrap: wrap;
+    }
+
+    /* ============================================================
+       Card grids
+       ============================================================ */
+    .grid {
+      display: grid;
+      gap: var(--sp-base);
+    }
+
+    .grid-3 {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .grid-2 {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .card {
+      background: var(--surface-card);
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-lg);
+      padding: var(--sp-lg);
+      display: flex;
+      flex-direction: column;
+      transition: border-color 0.15s ease;
+    }
+
+    .card:hover {
+      border-color: var(--hairline-strong);
+    }
+
+    .card h3 {
+      margin-bottom: var(--sp-xs);
+    }
+
+    .card p {
+      font-size: 15px;
+      color: var(--body);
+      flex: 1;
+    }
+
+    .card p code,
+    .exp-body p code,
+    .about-copy p code {
+      font-size: 13px;
+      color: var(--ink);
+      background: var(--surface-strong);
+      padding: 1px 5px;
+      border-radius: var(--r-xs);
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--sp-xxs);
+      margin: var(--sp-base) 0;
+    }
+
+    .tag {
+      background: var(--surface-strong);
+      color: var(--body);
+      border-radius: var(--r-pill);
+      padding: 3px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .card-links {
+      display: flex;
+      gap: var(--sp-base);
+      margin-top: auto;
+      padding-top: var(--sp-sm);
+    }
+
+    .card-links a {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    .card-links a:hover {
+      color: var(--primary-active);
+      text-decoration: underline;
+    }
+
+    .band-cta {
+      margin-top: var(--sp-xl);
+    }
+
+    /* ============================================================
+       About split
+       ============================================================ */
+    .about-head {
+      max-width: 620px;
+      margin-left: auto;
+      margin-right: auto;
+      text-align: left;
+    }
+
+    .about-grid {
+      max-width: 620px;
+      margin: 0 auto;
+      text-align: left;
+    }
+
+    .about-copy p {
+      font-size: 17px;
+      margin-bottom: var(--sp-base);
+    }
+
+    .about-copy p:last-child {
+      margin-bottom: 0;
+    }
+
+    /* ============================================================
+       Experience list
+       ============================================================ */
+    .exp-item {
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      gap: var(--sp-xl);
+      padding: var(--sp-lg) 0;
+      border-top: 1px solid var(--hairline);
+    }
+
+    .exp-item:last-child {
+      border-bottom: 1px solid var(--hairline);
+    }
+
+    .exp-when {
+      color: var(--muted);
+      font-size: 14px;
+      padding-top: 3px;
+    }
+
+    .exp-body h3 {
+      margin-bottom: var(--sp-xxs);
+    }
+
+    .exp-body p {
+      font-size: 15px;
+    }
+
+    .exp-body a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    .exp-body a:hover {
+      text-decoration: underline;
+    }
+
+    /* ============================================================
+       Certs
+       ============================================================ */
+    .certs-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: var(--sp-base);
+    }
+
+    .cert {
+      background: var(--surface-card);
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-lg);
+      padding: var(--sp-base);
+      text-align: center;
+    }
+
+    .cert img {
+      width: 100%;
+      height: auto;
+      border-radius: var(--r-sm);
+      margin-bottom: var(--sp-sm);
+    }
+
+    .cert h3 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    .cert p {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    /* ============================================================
+       Contact
+       ============================================================ */
+    .contact-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--sp-base);
+    }
+
+    .contact-card {
+      background: var(--surface-card);
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-lg);
+      padding: var(--sp-lg);
+    }
+
+    .contact-card .caption-uppercase {
+      color: var(--muted);
+      display: block;
+      margin-bottom: var(--sp-xs);
+    }
+
+    .contact-card a {
+      font-size: 16px;
+      color: var(--ink);
+      text-decoration: none;
+      word-break: break-word;
+    }
+
+    .contact-card a:hover {
+      color: var(--primary);
+    }
+
+    /* ============================================================
+       CTA band + footer
+       ============================================================ */
+    .cta-band {
+      padding: 96px 0;
+      text-align: center;
+      border-top: 1px solid var(--hairline);
+    }
+
+    .cta-band p {
+      max-width: 520px;
+      margin: var(--sp-base) auto var(--sp-xl);
+      font-size: 17px;
+    }
+
+    .footer {
+      background: var(--canvas);
+      border-top: 1px solid var(--hairline);
+      padding: 64px 0 var(--sp-xl);
+    }
+
+    .footer-top {
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: var(--sp-xl);
+      margin-bottom: var(--sp-xxl);
+    }
+
+    .footer-brand {
+      max-width: 320px;
+    }
+
+    .footer-brand p {
+      font-size: 14px;
+      margin-top: var(--sp-sm);
+    }
+
+    .footer-nav {
+      display: flex;
+      gap: 64px;
+      flex-wrap: wrap;
+    }
+
+    .footer-col h4 {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: var(--sp-sm);
+    }
+
+    .footer-col ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: var(--sp-xs);
+    }
+
+    .footer-col a {
+      font-size: 14px;
+      color: var(--body);
+      text-decoration: none;
+    }
+
+    .footer-col a:hover {
+      color: var(--ink);
+    }
+
+    .footer-legal {
+      border-top: 1px solid var(--hairline);
+      padding-top: var(--sp-lg);
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    /* ============================================================
+       Responsive
+       ============================================================ */
+    @media (max-width: 1024px) {
+      .grid-3 {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .certs-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    @media (max-width: 860px) {
+
+      .nav-links,
+      .nav-right .btn-text {
+        display: none;
+      }
+
+      .nav-toggle {
+        display: flex;
+      }
+
+      .top-nav.open .nav-links {
+        display: flex;
+        position: absolute;
+        top: 64px;
+        left: 0;
+        right: 0;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0;
+        background: var(--canvas);
+        border-bottom: 1px solid var(--hairline);
+        padding: var(--sp-sm) var(--sp-lg);
+      }
+
+      .top-nav.open .nav-links a {
+        padding: var(--sp-sm) 0;
+        width: 100%;
+      }
+
+      .about-grid {
+        grid-template-columns: 1fr;
+        gap: var(--sp-xl);
+      }
+    }
+
+    @media (max-width: 640px) {
+      section.band {
+        padding: 56px 0;
+      }
+
+      .grid-3,
+      .grid-2,
+      .contact-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .certs-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .exp-item {
+        grid-template-columns: 1fr;
+        gap: var(--sp-xs);
+      }
+
+      .hero {
+        padding: 72px 0 56px;
+      }
+
+      .footer-nav {
+        gap: var(--sp-xl);
+      }
+    }
+  </style>
 </head>
 
 <body>
-  <nav class="home-nav" aria-label="Navigation principale">
-    <a class="nav-logo" href="index.html" aria-label="Accueil Abdelaaziz Belkhair"><img src="assets/img/anubis-mark.webp"
-        alt="Logo Anubis Abdelaaziz Belkhair"></a>
-    <ul class="nav-links">
-      <li><a href="#about">Profil</a></li>
-      <li><a href="projects.html">Travail</a></li>
-      <li><a href="writeups.html">Writeups</a></li>
-      <li><a href="blog.html">Articles</a></li>
-      <li><a href="#experience">Expérience</a></li>
-      <li><a href="#contact">Contact</a></li>
-      <li><a href="cv.pdf" download>CV</a></li>
-    </ul>
+  <nav class="top-nav" id="topnav" aria-label="Navigation principale">
+    <div class="wrap">
+      <a class="wordmark" href="index.html"><span class="dot"></span> Abdelaaziz Belkhair</a>
+      <ul class="nav-links">
+        <li><a href="#about">À propos</a></li>
+        <li><a href="#projets">Projets</a></li>
+        <li><a href="#writeups">Writeups</a></li>
+        <li><a href="#articles">Articles</a></li>
+        <li><a href="#parcours">Parcours</a></li>
+        <li><a href="#contact">Contact</a></li>
+      </ul>
+      <div class="nav-right">
+        <a class="btn btn-text" href="#contact">Me contacter</a>
+        <a class="btn btn-primary" href="cv.pdf" download>Télécharger le CV</a>
+        <button class="nav-toggle" aria-label="Menu"
+          onclick="document.getElementById('topnav').classList.toggle('open')">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </div>
   </nav>
 
   <main>
-    <section class="hero-home" id="home">
-      <img class="hero-mark" src="assets/img/anubis-mark.webp" alt="" aria-hidden="true">
-      <div class="hero-inner">
-        <h1 class="hero-title">Abdelaaziz Belkhair</h1>
-        <p class="hero-copy">
-          Je termine mon stage PFE chez Orange Cyberdefense et je cherche un CDI en pentest Web ou Active
-          Directory. Vous trouverez ici des writeups détaillées, mes articles et les outils d'audit que
-          j'ai créés.
+    <!-- Hero -->
+    <header class="hero">
+      <div class="wrap">
+        <span class="badge caption-uppercase"><span class="live"></span> Disponible pour un CDI en septembre 2026</span>
+        <h1 class="display-mega">Salut, moi c'est Abdelaaziz.</h1>
+        <p class="lede">
+          Je fais du pentest Web et Active Directory, en ce moment en stage chez Orange
+          Cyberdefense. Ici, mes outils, mes writeups et ce que j'apprends au passage.
         </p>
         <div class="hero-actions">
-          <a class="button button-primary" href="#work"><i class="fas fa-terminal"></i> Voir le travail</a>
-          <a class="button" href="#writeups">Writeups</a>
-          <a class="button" href="#contact">Me contacter</a>
+          <a class="btn btn-download" href="cv.pdf" download>Télécharger le CV</a>
+          <a class="btn btn-secondary" href="#contact">Me contacter</a>
         </div>
-        <div class="challenge-stats hero-stats">
-          <div class="stat-item"><span class="stat-value">Septembre 2026</span><span class="stat-label">Disponible
-              CDI</span>
-          </div>
-          <div class="stat-item"><span class="stat-value">13</span><span class="stat-label">Projets &amp; outils</span>
-          </div>
-          <div class="stat-item"><span class="stat-value">Web · AD</span><span class="stat-label">Spécialités</span>
+      </div>
+    </header>
+
+    <!-- About -->
+    <section class="band" id="about">
+      <div class="wrap">
+        <div class="section-head about-head">
+          <span class="eyebrow caption-uppercase">Profil</span>
+          <h2 class="display-lg">À propos</h2>
+        </div>
+        <div class="about-grid">
+          <div class="about-copy">
+            <p>
+              Je suis élève-ingénieur en cybersécurité à l'ENSEIRB-MATMECA, en stage de fin d'études
+              chez Orange Cyberdefense.
+            </p>
+            <p>
+              Ce qui me plaît le plus, c'est de partir d'un accès de rien du tout et de remonter,
+              bout par bout, jusqu'au contrôle du domaine, puis de bien le raconter dans un rapport.
+              J'écris pas mal d'outils pour aller plus vite sur l'AD, et je documente mes chaînes
+              d'attaque avec les impasses, pas seulement le chemin qui a fini par marcher.
+            </p>
+            <p>
+              J'apprends surtout en pratiquant, sur HackTheBox et TryHackMe. Je garde aussi un pied
+              du côté maths et crypto, un reste de prépa.
+            </p>
+            <p>
+              Je cherche un CDI en pentest à partir de septembre 2026, en Web comme en Active
+              Directory.
+            </p>
           </div>
         </div>
       </div>
     </section>
 
-    <section class="page-section" id="about">
-      <div class="section-head">
-        <div>
-          <h2>Pentest Web et Active Directory</h2>
+    <!-- Projects -->
+    <section class="band" id="projets">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="eyebrow caption-uppercase">Projets</span>
+          <h2 class="display-lg">Ce sur quoi j'ai travaillé</h2>
         </div>
-      </div>
-      <div class="split">
-        <div class="about-copy">
-          <p>
-            Je travaille surtout sur les chemins qui transforment un accès limité en impact démontrable : logique
-            applicative, énumération Active Directory, abus d'ACL, délégations Kerberos et AD CS. J'aime documenter
-            les hypothèses, les impasses et les preuves, parce qu'un bon rapport doit permettre de comprendre le risque
-            autant que de le reproduire.
-          </p>
-          <p>
-            En mission comme en lab, je privilégie les chaînes courtes mais solides : ce qui donne un accès, ce qui le
-            rend exploitable, puis ce qui prouve l'impact sans bruit inutile.
-          </p>
-        </div>
-        <div class="domain-stack">
-          <article class="feature-card domain-lead">
-            <h3>Active Directory</h3>
-            <p>Énumération, chemins de privilèges, abus de configurations, AD CS et délégations Kerberos, avec la preuve
-              d'impact du foothold au contrôle du domaine.</p>
+        <div class="grid grid-3">
+          <article class="card">
+            <h3 class="title-md">ntds2bh</h3>
+            <p>Analyser une base Active Directory hors-ligne (le fameux <code>ntds.dit</code>) et en
+              sortir des JSON prêts pour BloodHound, pour étudier les chemins de privilèges sans
+              toucher au domaine.</p>
+            <div class="tag-row"><span class="tag">AD</span><span class="tag">BloodHound</span></div>
+            <div class="card-links"><a href="projects/ntds2bh.html">Page technique</a></div>
           </article>
-          <article class="feature-card domain-lead">
-            <h3>Pentest Web</h3>
-            <p>Analyse du comportement applicatif, logique métier, exploitation contrôlée, validation d'impact et
-              rédaction de constats directement actionnables.</p>
+          <article class="card">
+            <h3 class="title-md">ADBuilder</h3>
+            <p>Un générateur de labs Active Directory en PowerShell, piloté par de simples fichiers
+              JSON : utilisateurs, groupes, machines et scénarios d'attaque. Je m'en sers pour
+              rejouer des situations vues en mission.</p>
+            <div class="tag-row"><span class="tag">PowerShell</span><span class="tag">Lab AD</span></div>
+            <div class="card-links">
+              <a href="projects/adbuilder.html">Page technique</a>
+              <a href="https://github.com/abdelaaziz0/ADBuilder" target="_blank" rel="noopener">GitHub</a>
+            </div>
+          </article>
+          <article class="card">
+            <h3 class="title-md">PyWSUS-Relay</h3>
+            <p>Un fork de PyWSUS pour mes labs : WSUS en HTTP, capture NTLM, relais et émission de
+              certificats via AD CS.</p>
+            <div class="tag-row"><span class="tag">Python</span><span class="tag">WSUS</span><span class="tag">AD
+                CS</span></div>
+            <div class="card-links">
+              <a href="projects/pywsus-relay.html">Page technique</a>
+              <a href="https://github.com/abdelaaziz0/pyWSUS-relay" target="_blank" rel="noopener">GitHub</a>
+            </div>
+          </article>
+          <article class="card">
+            <h3 class="title-md">Kerbrutal</h3>
+            <p>Kerbrute revu à ma sauce, en Go : transport SOCKS5 et mode discret (jitter,
+              anti-lockout, circuit breaker, downgrade RC4 pour l'AS-REP roasting).</p>
+            <div class="tag-row"><span class="tag">Go</span><span class="tag">Kerberos</span><span class="tag">AD</span>
+            </div>
+            <div class="card-links">
+              <a href="https://github.com/abdelaaziz0/Kerbrutal" target="_blank" rel="noopener">GitHub</a>
+            </div>
           </article>
         </div>
+        <div class="band-cta"><a class="btn btn-secondary" href="projects.html">Tous mes projets</a></div>
       </div>
     </section>
 
-    <section class="page-section" id="work">
-      <div class="section-head">
-        <div>
-          <h2>Mes Outils de pentest</h2>
+    <!-- Writeups -->
+    <section class="band" id="writeups">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="eyebrow caption-uppercase">Analyses</span>
+          <h2 class="display-lg">Writeups</h2>
+          <p>J'écris des writeups détaillés, avec les hypothèses et les impasses, pas seulement le
+            chemin qui a fini par marcher.</p>
         </div>
-      </div>
-      <div class="project-grid">
-        <article class="project-card-alt">
-          <h3>ntds2bh</h3>
-          <p>Analyse offline d'une base Active Directory (<code>ntds.dit</code>) et sortie en JSON compatibles
-            BloodHound pour étudier les chemins de privilèges. Outil interne.</p>
-          <div class="tag-row">
-            <span class="mini-tag">AD</span><span class="mini-tag">BloodHound</span><span class="mini-tag">Page
-              technique</span>
-          </div>
-          <div class="project-links-alt">
-            <a class="icon-link" href="projects/ntds2bh.html" aria-label="Présentation technique ntds2bh"
-              title="Présentation technique">
-              <svg class="tech-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path d="M7 3.5h7l4 4v13H7z"></path>
-                <path d="M14 3.5v4h4"></path>
-                <path d="M9.5 13.2 7.8 15l1.7 1.8"></path>
-                <path d="M14.5 13.2l1.7 1.8-1.7 1.8"></path>
-                <path d="m12.8 12.7-1.6 4.6"></path>
-              </svg>
-            </a>
-          </div>
-        </article>
-        <article class="project-card-alt">
-          <h3>ADBuilder</h3>
-          <p>Générateur PowerShell de labs Active Directory pilotés par JSON : utilisateurs, groupes, machines et
-            scénarios d'attaque avec moteur de vulnérabilités.</p>
-          <div class="tag-row">
-            <span class="mini-tag">PowerShell</span><span class="mini-tag">Lab AD</span><span class="mini-tag">Page
-              technique</span>
-          </div>
-          <div class="project-links-alt">
-            <a class="icon-link" href="projects/adbuilder.html" aria-label="Présentation technique ADBuilder"
-              title="Présentation technique">
-              <svg class="tech-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path d="M7 3.5h7l4 4v13H7z"></path>
-                <path d="M14 3.5v4h4"></path>
-                <path d="M9.5 13.2 7.8 15l1.7 1.8"></path>
-                <path d="M14.5 13.2l1.7 1.8-1.7 1.8"></path>
-                <path d="m12.8 12.7-1.6 4.6"></path>
-              </svg>
-            </a>
-            <a class="icon-link" href="https://github.com/abdelaaziz0/ADBuilder" target="_blank" rel="noopener"
-              aria-label="GitHub ADBuilder"><i class="fab fa-github"></i></a>
-          </div>
-        </article>
-        <article class="project-card-alt">
-          <h3>PyWSUS-Relay</h3>
-          <p>Fork PyWSUS pour labs AD : WSUS-over-HTTP contrôlé, capture NTLM, relais HTTP et validation/émission AD CS
-            Web Enrollment.</p>
-          <div class="tag-row">
-            <span class="mini-tag">Python</span><span class="mini-tag">WSUS</span><span class="mini-tag">AD CS</span>
-          </div>
-          <div class="project-links-alt">
-            <a class="icon-link" href="projects/pywsus-relay.html" aria-label="Présentation technique PyWSUS-Relay"
-              title="Présentation technique">
-              <svg class="tech-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path d="M7 3.5h7l4 4v13H7z"></path>
-                <path d="M14 3.5v4h4"></path>
-                <path d="M9.5 13.2 7.8 15l1.7 1.8"></path>
-                <path d="M14.5 13.2l1.7 1.8-1.7 1.8"></path>
-                <path d="m12.8 12.7-1.6 4.6"></path>
-              </svg>
-            </a>
-            <a class="icon-link" href="https://github.com/abdelaaziz0/pyWSUS-relay" target="_blank" rel="noopener"
-              aria-label="GitHub PyWSUS-Relay"><i class="fab fa-github"></i></a>
-          </div>
-        </article>
-        <article class="project-card-alt">
-          <h3>Kerbrutal</h3>
-          <p>Kerbrute remis au goût du jour : mutation de noms AD, transport SOCKS5, reprise HMAC, JSONL, mode OPSEC
-            avec shuffle, jitter, scheduler global, backoff anti-lockout, budgets par utilisateur, dry-run d'audit,
-            circuit breaker et downgrade RC4 pour AS-REP roasting.</p>
-          <div class="tag-row">
-            <span class="mini-tag">Go</span><span class="mini-tag">Kerberos</span><span class="mini-tag">AD</span>
-          </div>
-          <div class="project-links-alt">
-            <a class="icon-link" href="https://github.com/abdelaaziz0/Kerbrutal" target="_blank" rel="noopener"
-              aria-label="GitHub Kerbrutal"><i class="fab fa-github"></i></a>
-          </div>
-        </article>
-      </div>
-      <div class="hero-actions">
-        <a class="button" href="projects.html">Tous les projets</a>
+        <div class="grid grid-2">
+          <article class="card">
+            <h3 class="title-md">Fluffy, HTB</h3>
+            <p>Share en écriture, capture NetNTLMv2, Shadow Credentials et AD CS ESC16 jusqu'à
+              Administrator.</p>
+            <div class="tag-row"><span class="tag">HTB</span><span class="tag">Medium</span><span class="tag">EN</span>
+            </div>
+            <div class="card-links"><a href="writeups/fluffy.html">Lire</a></div>
+          </article>
+          <article class="card">
+            <h3 class="title-md">Sendai, HTB</h3>
+            <p>SMB null, spray, BloodHound, dump gMSA et AD CS ESC4 jusqu'à Administrator.</p>
+            <div class="tag-row"><span class="tag">HTB</span><span class="tag">Medium</span><span class="tag">FR</span>
+            </div>
+            <div class="card-links"><a href="writeups/sendai.html">Lire</a></div>
+          </article>
+          <article class="card">
+            <h3 class="title-md">DeSynth Recruit, HTB</h3>
+            <p>Client-Side Desync, XSS persistant, path traversal et console Werkzeug jusqu'à RCE.</p>
+            <div class="tag-row"><span class="tag">HTB CTF</span><span class="tag">Medium</span><span
+                class="tag">EN</span></div>
+            <div class="card-links"><a href="writeups/desynth-recruit.html">Lire</a></div>
+          </article>
+          <article class="card">
+            <h3 class="title-md">Intergalactic Bounty, HTB</h3>
+            <p>Mass assignment, pollution de prototype et gadget template pour exécuter côté
+              serveur.</p>
+            <div class="tag-row"><span class="tag">HTB CTF</span><span class="tag">Hard</span><span
+                class="tag">EN</span></div>
+            <div class="card-links"><a href="writeups/intergalactic-bounty.html">Lire</a></div>
+          </article>
+        </div>
+        <div class="band-cta"><a class="btn btn-secondary" href="writeups.html">Toutes les analyses</a></div>
       </div>
     </section>
 
-    <section class="page-section" id="writeups">
-      <div class="section-head">
-        <div>
-          <h2>Writeups</h2>
+    <!-- Articles -->
+    <section class="band" id="articles">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="eyebrow caption-uppercase">Notes</span>
+          <h2 class="display-lg">Articles</h2>
+          <p>Je note aussi ce que j'apprends, souvent après une machine ou une mission.</p>
         </div>
-      </div>
-      <div class="article-grid">
-        <article class="article-card">
-          <h3>Fluffy - HTB</h3>
-          <p>Writable share, capture NetNTLMv2, Shadow Credentials et abus AD CS ESC16 jusqu'à Administrator.</p>
-          <div class="tag-row"><span class="mini-tag">HTB</span><span class="mini-tag">Medium</span><span
-              class="mini-tag">EN</span></div>
-          <a href="writeups/fluffy.html">Lire</a>
-        </article>
-        <article class="article-card">
-          <h3>Sendai - HTB</h3>
-          <p>SMB null, spray, BloodHound, dump gMSA et AD CS ESC4 jusqu'à Administrator.</p>
-          <div class="tag-row"><span class="mini-tag">HTB</span><span class="mini-tag">Medium</span><span
-              class="mini-tag">FR</span></div>
-          <a href="writeups/sendai.html">Lire</a>
-        </article>
-        <article class="article-card">
-          <h3>DeSynth Recruit - HTB</h3>
-          <p>Client-Side Desync, XSS persistant, path traversal et console Werkzeug jusqu'à RCE.</p>
-          <div class="tag-row"><span class="mini-tag">HTB CTF</span><span class="mini-tag">Medium</span><span
-              class="mini-tag">EN</span></div>
-          <a href="writeups/desynth-recruit.html">Lire</a>
-        </article>
-        <article class="article-card">
-          <h3>Intergalactic Bounty - HTB</h3>
-          <p>Mass assignment, pollution de prototype et gadget template pour écrire puis exécuter côté serveur.</p>
-          <div class="tag-row"><span class="mini-tag">HTB CTF</span><span class="mini-tag">Hard</span><span
-              class="mini-tag">EN</span></div>
-          <a href="writeups/intergalactic-bounty.html">Lire</a>
-        </article>
-      </div>
-      <div class="hero-actions">
-        <a class="button" href="writeups.html">Toutes les analyses</a>
+        <div class="grid grid-2">
+          <article class="card">
+            <h3 class="title-md">Active Directory, du foothold au Domain Admin</h3>
+            <p>Kerberoasting, délégation, Shadow Credentials, gMSA et AD CS.</p>
+            <div class="tag-row"><span class="tag">Active Directory</span></div>
+            <div class="card-links"><a href="blog/active-directory-attacks.html">Lire</a></div>
+          </article>
+          <article class="card">
+            <h3 class="title-md">AD Certificate Services, exploitation de la PKI interne</h3>
+            <p>Certipy, de ESC1 à ESC16.</p>
+            <div class="tag-row"><span class="tag">ADCS</span></div>
+            <div class="card-links"><a href="blog/adcs-attacks.html">Lire</a></div>
+          </article>
+          <article class="card">
+            <h3 class="title-md">Container Escape</h3>
+            <p>Primitives et points de rupture pour sortir d'un conteneur.</p>
+            <div class="tag-row"><span class="tag">Containers</span></div>
+            <div class="card-links"><a href="blog/container-escape.html">Lire</a></div>
+          </article>
+          <article class="card">
+            <h3 class="title-md">UOV, les signatures « Huile et Vinaigre »</h3>
+            <p>Mon côté crypto, avec l'attaque Kipnis-Shamir et un comparatif NIST.</p>
+            <div class="tag-row"><span class="tag">Crypto</span></div>
+            <div class="card-links"><a href="blog/uov-signatures.html">Lire</a></div>
+          </article>
+        </div>
+        <div class="band-cta"><a class="btn btn-secondary" href="blog.html">Tous les articles</a></div>
       </div>
     </section>
 
-    <section class="page-section" id="articles">
-      <div class="section-head">
-        <div>
-          <h2>Articles et Notes</h2>
+    <!-- Parcours -->
+    <span class="anchor-alias" id="experience" aria-hidden="true"></span>
+    <section class="band" id="parcours">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="eyebrow caption-uppercase">Parcours</span>
+          <h2 class="display-lg">Formation et expérience</h2>
         </div>
-      </div>
-      <div class="article-grid">
-        <article class="article-card">
-          <span class="mini-tag">Containers</span>
-          <h3>Container Escape</h3>
-          <p>Primitives, gates and failure points for container boundary analysis.</p>
-          <a href="blog/container-escape.html">Lire</a>
-        </article>
-        <article class="article-card">
-          <span class="mini-tag">Active Directory</span>
-          <h3>Active Directory, foothold puis Domain Admin</h3>
-          <p>Kerberoasting, délégation, Shadow Credentials, gMSA, AD CS ESC : BloodHound, Certipy, Rubeus et Event IDs.
-          </p>
-          <a href="blog/active-directory-attacks.html">Lire</a>
-        </article>
-        <article class="article-card">
-          <span class="mini-tag">ADCS</span>
-          <h3>AD Certificate Services, exploitation de PKI interne</h3>
-          <p>Certipy, ESC1 à ESC16 : chaînes complètes de l'énumération au NT hash Administrator.</p>
-          <a href="blog/adcs-attacks.html">Lire</a>
-        </article>
-        <article class="article-card">
-          <span class="mini-tag">Crypto</span>
-          <h3>UOV, comprendre les signatures "Huile et Vinaigre"</h3>
-          <p>Équations MQ, génération de clés, algorithme de signature, attaque Kipnis-Shamir et comparatif NIST
-            (Dilithium, Falcon, SPHINCS+).</p>
-          <a href="blog/uov-signatures.html">Lire</a>
-        </article>
-      </div>
-      <div class="hero-actions">
-        <a class="button" href="blog.html">Tous les articles</a>
+        <div class="exp-list">
+          <div class="exp-item">
+            <div class="exp-when">Stage PFE, 6 mois</div>
+            <div class="exp-body">
+              <h3 class="title-md">Orange Cyberdefense</h3>
+              <p>Pentest web : recherche de vulnérabilités, exploitation, validation d'impact et
+                rédaction des constats. C'est là que j'ai écrit <code>ntds2bh</code>.</p>
+            </div>
+          </div>
+          <div class="exp-item">
+            <div class="exp-when">Été 2025</div>
+            <div class="exp-body">
+              <h3 class="title-md">Stage R&amp;D, AM Advisory</h3>
+              <p>Moteur SAST hybride : analyse statique, CodeBERT, Phi et détection OWASP.</p>
+            </div>
+          </div>
+          <div class="exp-item">
+            <div class="exp-when">2023 - 2026</div>
+            <div class="exp-body">
+              <h3 class="title-md">ENSEIRB-MATMECA, Bordeaux INP</h3>
+              <p>Ingénieur télécoms, spécialité sécurité, crypto et réseaux.</p>
+            </div>
+          </div>
+          <div class="exp-item">
+            <div class="exp-when">2021 - 2023</div>
+            <div class="exp-body">
+              <h3 class="title-md">CPGE MPSI/MP</h3>
+              <p>Maths et physique intensives.</p>
+            </div>
+          </div>
+          <div class="exp-item">
+            <div class="exp-when">Labs continus</div>
+            <div class="exp-body">
+              <h3 class="title-md">HackTheBox / TryHackMe</h3>
+              <p>AD, web et chaînes multi-étapes. Profils :
+                <a href="https://app.hackthebox.com/users/3026245" target="_blank" rel="noopener">HackTheBox</a> et
+                <a href="https://tryhackme.com/p/y0unga2ubi5" target="_blank" rel="noopener">TryHackMe</a>.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
-    <section class="page-section" id="experience">
-      <div class="section-head">
-        <div>
-          <h2>Formation et expérience</h2>
+    <!-- Certifications -->
+    <section class="band" id="certifications">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="eyebrow caption-uppercase">Certifications</span>
+          <h2 class="display-lg">Certifications</h2>
         </div>
-      </div>
-      <div class="timeline-grid">
-        <article class="timeline-card">
-          <span class="mini-tag">Stage PFE 6 mois</span>
-          <h3>Orange Cyberdefense</h3>
-          <p>Contribution directe à des missions de pentest web : recherche de vulnérabilités, exploitation, validation
-            d'impact et rédaction de constats techniques.
-            Développement de
-            <code>ntds2bh</code>, un outil qui transforme une NTDS.dit en JSON compatibles
-            BloodHound.
-          </p>
-        </article>
-        <article class="timeline-card">
-          <span class="mini-tag">Juin - Septembre 2025</span>
-          <h3>Stage Ingénieur R&D - AM Advisory</h3>
-          <p>Moteur SAST hybride : analyse statique, CodeBERT, Phi, détection OWASP et triage de vulnérabilités.</p>
-        </article>
-        <article class="timeline-card">
-          <span class="mini-tag">2023 - 2026</span>
-          <h3>ENSEIRB-MATMECA, Bordeaux INP</h3>
-          <p>Cursus ingénieur télécommunications, spécialisation sécurité, crypto, réseaux et système.</p>
-        </article>
-        <article class="timeline-card">
-          <span class="mini-tag">2021 - 2023</span>
-          <h3>CPGE MPSI/MP</h3>
-          <p>Formation intensive en mathématiques et physique.</p>
-        </article>
-        <article class="timeline-card">
-          <span class="mini-tag">Labs continus</span>
-          <h3>HackTheBox / TryHackMe</h3>
-          <p>Pratique régulière sur AD, exploitation web, red team et chaînes multi-étapes.
-            Profils: <a href="https://app.hackthebox.com/users/3026245" target="_blank" rel="noopener">HackTheBox</a> et
-            <a href="https://tryhackme.com/p/y0unga2ubi5" target="_blank" rel="noopener">TryHackMe</a>.
-          </p>
-        </article>
-      </div>
-    </section>
-
-    <section class="page-section" id="certifications">
-      <div class="section-head">
-        <div>
-          <h2>Formations et certifications principales</h2>
-        </div>
-      </div>
-      <div class="certs-grid-alt">
-        <article class="cert-card-old">
-          <img src="assets/img/certifs/tryhackme-red-teaming.webp" alt="TryHackMe Red Teaming" loading="lazy">
-          <div class="cert-info">
+        <div class="certs-grid">
+          <div class="cert">
+            <img src="assets/img/certifs/tryhackme-red-teaming.webp" alt="TryHackMe Red Teaming" loading="lazy">
             <h3>Red Teaming</h3>
             <p>TryHackMe</p>
           </div>
-        </article>
-        <article class="cert-card-old">
-          <img src="assets/img/certifs/tryhackme-offensive-pentesting.webp" alt="TryHackMe Offensive Pentesting"
-            loading="lazy">
-          <div class="cert-info">
+          <div class="cert">
+            <img src="assets/img/certifs/tryhackme-offensive-pentesting.webp" alt="TryHackMe Offensive Pentesting"
+              loading="lazy">
             <h3>Offensive Pentesting</h3>
             <p>TryHackMe</p>
           </div>
-        </article>
-        <article class="cert-card-old">
-          <img src="assets/img/certifs/tryhackme-web-application-pentesting.webp"
-            alt="TryHackMe Web Application Pentesting" loading="lazy">
-          <div class="cert-info">
+          <div class="cert">
+            <img src="assets/img/certifs/tryhackme-web-application-pentesting.webp"
+              alt="TryHackMe Web Application Pentesting" loading="lazy">
             <h3>Web App Pentesting</h3>
             <p>TryHackMe</p>
           </div>
-        </article>
-        <article class="cert-card-old">
-          <img src="assets/img/certifs/htb-web-pentester-job-role-path.webp"
-            alt="HackTheBox Web Pentester Job Role Path" loading="lazy">
-          <div class="cert-info">
+          <div class="cert">
+            <img src="assets/img/certifs/htb-web-pentester-job-role-path.webp"
+              alt="HackTheBox Web Pentester Job Role Path" loading="lazy">
             <h3>Web Pentester Path</h3>
             <p>HackTheBox</p>
           </div>
-        </article>
-        <article class="cert-card-old">
-          <img src="assets/img/certifs/toeic.webp" alt="TOEIC Certificate" loading="lazy">
-          <div class="cert-info">
+          <div class="cert">
+            <img src="assets/img/certifs/toeic.webp" alt="TOEIC Certificate" loading="lazy">
             <h3>TOEIC 945/990</h3>
             <p>Niveau C1</p>
           </div>
-        </article>
+        </div>
       </div>
     </section>
 
-    <section class="page-section" id="contact">
-      <div class="section-head">
-        <div>
-          <h2>Me contacter</h2>
+    <!-- Contact -->
+    <section class="band" id="contact">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="eyebrow caption-uppercase">Contact</span>
+          <h2 class="display-lg">Me contacter</h2>
+          <p>Le plus simple, c'est par email. On peut aussi se croiser ici.</p>
+        </div>
+        <div class="contact-grid">
+          <div class="contact-card">
+            <span class="caption-uppercase">Email</span>
+            <a href="mailto:abelkhair002@bordeaux-inp.fr">abelkhair002@bordeaux-inp.fr</a>
+          </div>
+          <div class="contact-card">
+            <span class="caption-uppercase">LinkedIn</span>
+            <a href="https://www.linkedin.com/in/abdelaaziz-belkhair-12502024b/" target="_blank"
+              rel="noopener">abdelaaziz-belkhair</a>
+          </div>
+          <div class="contact-card">
+            <span class="caption-uppercase">GitHub</span>
+            <a href="https://github.com/abdelaaziz0" target="_blank" rel="noopener">github.com/abdelaaziz0</a>
+          </div>
+          <div class="contact-card">
+            <span class="caption-uppercase">HackTheBox</span>
+            <a href="https://app.hackthebox.com/users/3026245" target="_blank" rel="noopener">HTB profile</a>
+          </div>
+          <div class="contact-card">
+            <span class="caption-uppercase">TryHackMe</span>
+            <a href="https://tryhackme.com/p/y0unga2ubi5" target="_blank" rel="noopener">y0unga2ubi5</a>
+          </div>
         </div>
       </div>
-      <div class="contact-grid-alt">
-        <article class="contact-card contact-logo-card">
-          <a class="icon-link" href="mailto:abelkhair002@bordeaux-inp.fr" aria-label="Email"><i
-              class="fas fa-envelope"></i></a>
-          <h3>Email</h3>
-          <p><a href="mailto:abelkhair002@bordeaux-inp.fr">abelkhair002@bordeaux-inp.fr</a></p>
-        </article>
-        <article class="contact-card contact-logo-card">
-          <a class="icon-link" href="https://www.linkedin.com/in/abdelaaziz-belkhair-12502024b/" target="_blank"
-            rel="noopener" aria-label="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
-          <h3>LinkedIn</h3>
-          <p><a href="https://www.linkedin.com/in/abdelaaziz-belkhair-12502024b/" target="_blank"
-              rel="noopener">abdelaaziz-belkhair</a></p>
-        </article>
-        <article class="contact-card contact-logo-card">
-          <a class="icon-link" href="https://github.com/abdelaaziz0" target="_blank" rel="noopener"
-            aria-label="GitHub"><i class="fab fa-github"></i></a>
-          <h3>GitHub</h3>
-          <p><a href="https://github.com/abdelaaziz0" target="_blank" rel="noopener">github.com/abdelaaziz0</a></p>
-        </article>
-        <article class="contact-card contact-logo-card">
-          <a class="icon-link" href="https://app.hackthebox.com/users/3026245" target="_blank" rel="noopener"
-            aria-label="HackTheBox"><i class="fas fa-cube"></i></a>
-          <h3>HackTheBox</h3>
-          <p><a href="https://app.hackthebox.com/users/3026245" target="_blank" rel="noopener">HTB profile</a></p>
-        </article>
-        <article class="contact-card contact-logo-card">
-          <a class="icon-link" href="https://tryhackme.com/p/y0unga2ubi5" target="_blank" rel="noopener"
-            aria-label="TryHackMe"><i class="fas fa-terminal"></i></a>
-          <h3>TryHackMe</h3>
-          <p><a href="https://tryhackme.com/p/y0unga2ubi5" target="_blank" rel="noopener">y0unga2ubi5</a></p>
-        </article>
+    </section>
+
+    <!-- CTA band -->
+    <section class="cta-band">
+      <div class="wrap">
+        <h2 class="display-lg">On échange ?</h2>
+        <p>Je cherche un CDI en pentest à partir de septembre 2026, en Web comme en Active Directory.</p>
+        <a class="btn btn-primary" href="mailto:abelkhair002@bordeaux-inp.fr">M'écrire</a>
       </div>
     </section>
   </main>
 
-  <footer class="site-footer-alt">
-    &copy; 2026 Abdelaaziz Belkhair
+  <footer class="footer">
+    <div class="wrap">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <a class="wordmark" href="index.html"><span class="dot"></span> Abdelaaziz Belkhair</a>
+          <p>Pentest Web et Active Directory. Outils, writeups et notes.</p>
+        </div>
+        <div class="footer-nav">
+          <div class="footer-col">
+            <h4>Site</h4>
+            <ul>
+              <li><a href="#projets">Projets</a></li>
+              <li><a href="#writeups">Writeups</a></li>
+              <li><a href="#articles">Articles</a></li>
+              <li><a href="#parcours">Parcours</a></li>
+            </ul>
+          </div>
+          <div class="footer-col">
+            <h4>Profils</h4>
+            <ul>
+              <li><a href="https://github.com/abdelaaziz0" target="_blank" rel="noopener">GitHub</a></li>
+              <li><a href="https://www.linkedin.com/in/abdelaaziz-belkhair-12502024b/" target="_blank"
+                  rel="noopener">LinkedIn</a></li>
+              <li><a href="https://app.hackthebox.com/users/3026245" target="_blank" rel="noopener">HackTheBox</a></li>
+              <li><a href="https://tryhackme.com/p/y0unga2ubi5" target="_blank" rel="noopener">TryHackMe</a></li>
+            </ul>
+          </div>
+          <div class="footer-col">
+            <h4>Contact</h4>
+            <ul>
+              <li><a href="mailto:abelkhair002@bordeaux-inp.fr">Email</a></li>
+              <li><a href="cv.pdf" download>CV</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="footer-legal">&copy; 2026 Abdelaaziz Belkhair</div>
+    </div>
   </footer>
 </body>
 

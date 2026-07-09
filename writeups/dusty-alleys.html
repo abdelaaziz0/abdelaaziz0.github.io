@@ -92,7 +92,6 @@
                     <li><a href="#s5">Failed Approaches</a></li>
                     <li><a href="#s6">Attack Chain Summary</a></li>
                     <li><a href="#s7">Key Takeaways</a></li>
-                    <li><a href="#s8">Remediation</a></li>
                 </ol>
             </nav>
 
@@ -174,29 +173,28 @@ Host: TARGET:PORT</code></pre>
 
                 <p>From the Dockerfile and nginx configuration:</p>
 
-                <pre><code>┌─────────────────────────────────────────────────────────────┐
-│                        CLIENT                                │
-│                          │                                   │
-│                     ┌────▼────┐                              │
-│                     │  NGINX  │  (:80)                       │
-│                     │         │                              │
-│                     │ Routes: │                              │
-│                     │  /           → Express (:3000)         │
-│                     │  /think      → Express (:3000)         │
-│                     │  /alley      → Express (:3000)         │
-│                     │  /guardian   → 404 (blocked!)          │
-│                     └────┬────┘                              │
-│                          │                                   │
-│                     ┌────▼────┐                              │
-│                     │ Express │  (:3000) - "Dusty Alleys"   │
-│                     │         │                              │
-│                     │ Routes: │                              │
-│                     │  /           → Static landing page     │
-│                     │  /think      → Header reflection       │
-│                     │  /alley      → Game page               │
-│                     │  /guardian   → Flag endpoint!          │
-│                     └─────────┘                              │
-└─────────────────────────────────────────────────────────────┘</code></pre>
+                <div class="state-grid">
+                    <article class="state-card blocked">
+                        <span class="state-label">Edge proxy</span>
+                        <h3>Nginx on <code>:80</code></h3>
+                        <dl>
+                            <div><dt><code>/</code></dt><dd>Proxied to Express on <code>:3000</code></dd></div>
+                            <div><dt><code>/think</code></dt><dd>Proxied to Express on <code>:3000</code></dd></div>
+                            <div><dt><code>/alley</code></dt><dd>Proxied to Express on <code>:3000</code></dd></div>
+                            <div><dt><code>/guardian</code></dt><dd>Nginx returns its own 404.</dd></div>
+                        </dl>
+                    </article>
+                    <article class="state-card ok">
+                        <span class="state-label">Backend app</span>
+                        <h3>Express on <code>:3000</code></h3>
+                        <dl>
+                            <div><dt><code>/</code></dt><dd>Static landing page</dd></div>
+                            <div><dt><code>/think</code></dt><dd>Header reflection</dd></div>
+                            <div><dt><code>/alley</code></dt><dd>Game page</dd></div>
+                            <div><dt><code>/guardian</code></dt><dd>Flag endpoint exists internally.</dd></div>
+                        </dl>
+                    </article>
+                </div>
 
                 <h3>The Key Insight</h3>
 
@@ -396,23 +394,32 @@ curl http://TARGET:PORT/guardian%00     # → 400 (null byte rejected)</code></p
 
                 <h2 id="s6">6. Attack Chain Summary</h2>
 
-                <pre><code>┌─────────────────────────────────────────────────────────────────┐
-│                   DUSTY ALLEYS EXPLOIT CHAIN                     │
-├──────────┬──────────────────────────────────────────────────────┤
-│ Step 1   │ Reconnaissance                                       │
-│          │ Discover /think (header reflection) and /alley        │
-│          │ Note /guardian returns nginx 404 (blocked)             │
-├──────────┼──────────────────────────────────────────────────────┤
-│ Step 2   │ Virtual Host Bypass                                   │
-│          │ Use Host: dusty-alleys.htb header                     │
-│          │ nginx routes to server block WITHOUT /guardian block   │
-│          │ → /guardian now returns 200!                           │
-├──────────┼──────────────────────────────────────────────────────┤
-│ Step 3   │ SSRF + Header Reflection                              │
-│          │ /guardian?domain=app:3000 makes internal request       │
-│          │ to /think with X-Secret-Flag header                   │
-│          │ /think echoes ALL headers → flag revealed              │
-└──────────┴──────────────────────────────────────────────────────┘</code></pre>
+                <div class="flow-chain">
+                    <div class="flow-step">
+                        <div>
+                            <span class="flow-kicker">Step 1</span>
+                            <h3>Reconnaissance</h3>
+                            <p>Find <code>/think</code> header reflection and <code>/alley</code>. Direct
+                                <code>/guardian</code> returns nginx's 404.</p>
+                        </div>
+                    </div>
+                    <div class="flow-step">
+                        <div>
+                            <span class="flow-kicker">Step 2</span>
+                            <h3>Virtual host bypass</h3>
+                            <p>Send <code>Host: dusty-alleys.htb</code>. Nginx routes through a server block without
+                                the <code>/guardian</code> deny rule, so the route reaches Express.</p>
+                        </div>
+                    </div>
+                    <div class="flow-step">
+                        <div>
+                            <span class="flow-kicker">Step 3</span>
+                            <h3>SSRF + header reflection</h3>
+                            <p><code>/guardian?domain=app:3000</code> calls internal <code>/think</code> with
+                                <code>X-Secret-Flag</code>; <code>/think</code> reflects it back.</p>
+                        </div>
+                    </div>
+                </div>
 
                 <h2 id="s7">7. Key Takeaways</h2>
 
@@ -453,49 +460,6 @@ curl http://TARGET:PORT/guardian%00     # → 400 (null byte rejected)</code></p
                         </tr>
                     </tbody>
                 </table>
-
-                <h2 id="s8">8. Remediation</h2>
-
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Vulnerability</th>
-                            <th>Fix</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>Header reflection endpoint</td>
-                            <td>Remove <code>/think</code> in production. Never expose debug endpoints.</td>
-                        </tr>
-                        <tr>
-                            <td>Inconsistent nginx ACL</td>
-                            <td>Apply <code>location /guardian { return 404; }</code> to <strong>all</strong> server
-                                blocks, or use a shared <code>include</code> file for security rules.</td>
-                        </tr>
-                        <tr>
-                            <td>SSRF in <code>/guardian</code></td>
-                            <td>Don't make HTTP requests to user-controlled domains. If external calls are needed, use a
-                                strict allowlist.</td>
-                        </tr>
-                        <tr>
-                            <td>Secrets in headers</td>
-                            <td>Never pass secrets as HTTP headers in internal requests. Use environment variables or
-                                secure vaults accessed directly.</td>
-                        </tr>
-                        <tr>
-                            <td>Virtual host exposure</td>
-                            <td>Use <code>default_server</code> to catch-all and reject unknown Host headers. Only
-                                accept explicitly expected domains.</td>
-                        </tr>
-                    </tbody>
-                </table>
-
-                <div class="pwned-banner">
-                    <span class="pwned-icon"><i class="fas fa-flag"></i></span>
-                    <div class="pwned-text">Machine Pwned</div>
-                    <p class="pwned-sub">VHost Bypass → SSRF → Flag captured</p>
-                </div>
 
             </div>
         </article>

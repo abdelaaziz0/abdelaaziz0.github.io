@@ -61,7 +61,7 @@ body.manual-page::before {
   display: block;
   padding: 0.24rem 0;
   color: var(--muted-soft);
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
   font-size: 0.68rem;
   line-height: 1.45;
   overflow-wrap: anywhere;
@@ -95,9 +95,9 @@ body.manual-page::before {
   max-width: 760px;
   margin: 0 0 0.55rem;
   color: var(--text-strong);
-  font-family: "DM Sans", system-ui, sans-serif;
+  font-family: "Inter", system-ui, sans-serif;
   font-size: 2.55rem;
-  font-weight: 500;
+  font-weight: 400;
   letter-spacing: 0;
   line-height: 1.08;
 }
@@ -107,7 +107,7 @@ body.manual-page::before {
   padding: 0 0 1.5rem;
   border-bottom: 1px solid var(--border);
   color: var(--muted);
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
   font-size: 0.82rem;
   font-weight: 400;
   letter-spacing: 0.04em;
@@ -120,9 +120,9 @@ body.manual-page::before {
   padding-top: 1.6rem;
   border-top: 1px solid var(--border);
   color: var(--text-strong);
-  font-family: "DM Sans", system-ui, sans-serif;
+  font-family: "Inter", system-ui, sans-serif;
   font-size: 2.05rem;
-  font-weight: 500;
+  font-weight: 400;
   letter-spacing: 0;
   line-height: 1.18;
 }
@@ -133,7 +133,7 @@ body.manual-page::before {
   padding: 0;
   border: 0;
   color: var(--accent);
-  font-family: "DM Sans", system-ui, sans-serif;
+  font-family: "Inter", system-ui, sans-serif;
   font-size: 1.05rem;
   font-weight: 500;
   letter-spacing: 0;
@@ -194,7 +194,7 @@ body.manual-page::before {
   align-items: center;
   justify-content: center;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 9999px;
   background: var(--surface);
   color: var(--muted);
   cursor: pointer;

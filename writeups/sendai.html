@@ -26,7 +26,7 @@
   <title>Sendai - HackTheBox Writeup</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link
-    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
     rel="stylesheet">
   <link rel="stylesheet" href="../assets/css/writeup.css"></head>
 
@@ -34,13 +34,13 @@
 
   <header>
   <nav>
-    <a class="nav-logo" href="../index.html" aria-label="Accueil Abdelaaziz Belkhair"><img src="../assets/img/anubis-mark.webp" alt="Logo Anubis Abdelaaziz Belkhair"></a>
+    <a class="wordmark" href="../index.html"><span class="dot"></span> Abdelaaziz Belkhair</a>
       <ul class="nav-links">
         <li><a href="../index.html#about">Profil</a></li>
         <li><a href="../projects.html">Travail</a></li>
         <li><a href="../writeups.html" class="active">Writeups</a></li>
         <li><a href="../blog.html">Articles</a></li>
-        <li><a href="../index.html#experience">Expérience</a></li>
+        <li><a href="../index.html#parcours">Expérience</a></li>
         <li><a href="../index.html#contact">Contact</a></li>
         <li><a href="../cv.pdf" download>CV</a></li>
       </ul>
@@ -92,7 +92,6 @@
         <li><a href="#s9">AD CS ESC4 to Administrator</a></li>
         <li><a href="#s10">Root Flag</a></li>
         <li><a href="#s11">Full Attack Chain</a></li>
-        <li><a href="#s12">Key Takeaways</a></li>
       </ol>
     </div>
 
@@ -175,12 +174,6 @@
       <span class="section-number">02 - Reconnaissance</span>
       <h2>Initial Enumeration</h2>
 
-      <div class="signal">
-        <span class="signal-label">What pointed us here</span>
-        Classic AD DC fingerprint. Notable additions vs a minimal DC: port 80/443 (IIS),
-        port 3389 (RDP). SMB signing required -relay is off the table. No clock skew.
-      </div>
-
       <pre><code>nmap -sS -A -p- 10.129.234.66 -oN full-scan
 
 PORT      STATE SERVICE       VERSION
@@ -205,13 +198,6 @@ SMB signing: enabled and required</code></pre>
     <section id="s3">
       <span class="section-number">03 - SMB Enumeration</span>
       <h2>Null SMB &amp; Username Harvest</h2>
-
-      <div class="signal">
-        <span class="signal-label">What pointed us here</span>
-        Null session authenticated against SMB. The <code>sendai</code> share was readable
-        without credentials and contained a <code>transfer/</code> directory with per-user
-        subdirectories -leaking the initial user list directly.
-      </div>
 
       <pre><code>smbclient //10.129.234.66/sendai -N
 
@@ -254,13 +240,6 @@ Thomas.Powell, mgtsvc$ (gMSA)</code></pre>
       <span class="section-number">04 - Expired Passwords</span>
       <h2>Expired Passwords &amp; Force-Change</h2>
 
-      <div class="signal">
-        <span class="signal-label">What pointed us here</span>
-        The <code>incident.txt</code> file on the share said that accounts with weak passwords
-        had been <em>expired</em>. An empty-password spray confirmed two accounts respond with
-        <code>STATUS_PASSWORD_MUST_CHANGE</code> instead of <code>STATUS_LOGON_FAILURE</code>.
-      </div>
-
       <pre><code>nxc smb dc.sendai.vl -u users.txt -p '' --continue-on-success
 
 <span class="bad">[-] sendai.vl\elliot.yates:  STATUS_PASSWORD_MUST_CHANGE</span>
@@ -269,39 +248,9 @@ Thomas.Powell, mgtsvc$ (gMSA)</code></pre>
       <div class="theory">
         <span class="theory-label">STATUS_PASSWORD_MUST_CHANGE - forcer le changement sans l'ancien mot de passe</span>
 
-        <p>Quand un compte AD a l'attribut <code>pwdLastSet = 0</code> (password expired/must change),
-          Windows autorise une authentification partielle : l'utilisateur peut se connecter aux
-          protocoles qui supportent le <em>password change flow</em> sans fournir l'ancien mot de passe,
-          car par définition il est invalide ou inconnu.</p>
-
-        <p>La mécanique repose sur le protocole <strong>SAMR</strong> (Security Account Manager Remote
-          Protocol). La séquence est :</p>
-        <ul>
-          <li>Le client ouvre une session <code>SAMR</code> avec un <em>null bind</em> (session anonyme)</li>
-          <li>Il appelle <code>SamrChangePasswordUser</code> ou l'équivalent DCE/RPC en fournissant uniquement
-            le <strong>nouveau</strong> mot de passe</li>
-          <li>Le DC accepte parce que le compte est déjà marqué expiré -aucune vérification de l'ancien
-            mot de passe n'est effectuée</li>
-        </ul>
-
-        <p><code>smbpasswd</code> échoue ici car il tente un bind authentifié (il demande l'ancien mot de
-          passe). <code>changepasswd.py</code> d'Impacket gère exactement ce cas : il détecte
-          <code>STATUS_PASSWORD_MUST_CHANGE</code>, passe en null session SAMR, et pousse le nouveau
-          mot de passe sans fournir l'ancien.
-        </p>
-
-        <div class="theory-diagram">smbpasswd (échec)
-          bind SAMR authentifié → demande old_password → NT_STATUS_LOGON_FAILURE
-
-          changepasswd.py (succès)
-          [!] Password is expired, trying to bind with a null session.
-          null bind SAMR → SamrChangePasswordUser(new_password) → OK</div>
-
-        <p style="margin-top:.7rem;font-size:.85em;opacity:.75;">
-          Condition nécessaire : le DC doit autoriser les null sessions SAMR. C'est le comportement
-          par défaut sur les DC Windows Server 2008+. Le flag
-          <code>RestrictAnonymousSAM = 0</code> (par défaut) ouvre ce chemin.
-        </p>
+        <p><code>STATUS_PASSWORD_MUST_CHANGE</code> donne accès au flux de changement de mot de passe.
+          <code>changepasswd.py</code> bascule en null session SAMR et pousse un nouveau mot de passe sans connaître
+          l'ancien, ce que <code>smbpasswd</code> ne gère pas dans ce cas.</p>
       </div>
 
       <pre><code>changepasswd.py sendai.vl/thomas.powell:@dc.sendai.vl -newpass 'P@ssw0rd123!'
@@ -318,13 +267,6 @@ Thomas.Powell, mgtsvc$ (gMSA)</code></pre>
     <section id="s5">
       <span class="section-number">05 - BloodHound &amp; Group Abuse</span>
       <h2>BloodHound &amp; Group Abuse</h2>
-
-      <div class="signal">
-        <span class="signal-label">What pointed us here</span>
-        With <code>thomas.powell</code>, BloodHound collection was the first move. The graph
-        showed <code>thomas.powell</code> could add himself to <code>admsvc</code>, and
-        <code>admsvc</code> members could read the gMSA password for <code>mgtsvc$</code>.
-      </div>
 
       <pre><code>bloodhound-ce.py -u 'thomas.powell' -p 'P@ssw0rd123!' \
   -d sendai.vl -dc dc.sendai.vl -ns 10.129.234.66 \
@@ -356,41 +298,11 @@ Thomas.Powell, mgtsvc$ (gMSA)</code></pre>
       <h2>gMSA Dump -mgtsvc$</h2>
 
       <div class="theory">
-        <span class="theory-label">Group Managed Service Accounts (gMSA) - comment fonctionne le dump</span>
+        <span class="theory-label">Group Managed Service Accounts</span>
 
-        <p>Un <strong>gMSA</strong> (<code>msDS-GroupManagedServiceAccount</code>) est un compte de service
-          dont le mot de passe est généré automatiquement par le DC (256 octets aléatoires), renouvelé
-          périodiquement, et stocké dans l'attribut LDAP <code>msDS-ManagedPassword</code>.</p>
-
-        <p>L'attribut <code>msDS-GroupMSAMembership</code> définit quels <em>principals</em> (utilisateurs
-          ou groupes) sont autorisés à lire <code>msDS-ManagedPassword</code>. Si notre compte appartient
-          à l'un de ces principals, on peut lire la structure <code>MSDS-MANAGEDPASSWORD_BLOB</code>
-          directement via LDAP -pas d'exploit, c'est une lecture LDAP normale avec les bons droits.</p>
-
-        <p>La structure retournée contient :</p>
-        <ul>
-          <li>Le mot de passe courant (NT hash calculable directement)</li>
-          <li>Le mot de passe précédent (pour la rotation)</li>
-          <li>Des clés Kerberos AES-128 et AES-256</li>
-        </ul>
-
-        <p><code>gMSADumper.py</code> effectue la lecture LDAP de <code>msDS-ManagedPassword</code> et
-          calcule le NT hash à partir du blob. <code>bloodyAD</code> fait la même chose et affiche
-          directement <code>msDS-ManagedPassword.NT</code>.</p>
-
-        <div class="theory-diagram">thomas.powell
-          └─▶ membre de admsvc
-          │ admsvc ∈ msDS-GroupMSAMembership de mgtsvc$
-          ▼
-          LDAP read: mgtsvc$.msDS-ManagedPassword
-          │ décode MSDS-MANAGEDPASSWORD_BLOB
-          ▼
-          NT hash de mgtsvc$ (sans changer aucun mot de passe)</div>
-
-        <p style="margin-top:.7rem;font-size:.85em;opacity:.75;">
-          Le NT hash d'un gMSA est utilisable directement pour Pass-the-Hash -les gMSA ne supportent
-          pas l'authentification interactive mais fonctionnent parfaitement pour WinRM, SMB, et Kerberos.
-        </p>
+        <p><code>admsvc</code> est autorisé dans <code>msDS-GroupMSAMembership</code> pour
+          <code>mgtsvc$</code>. Une fois <code>thomas.powell</code> ajouté au groupe, la lecture LDAP de
+          <code>msDS-ManagedPassword</code> donne directement le matériel Kerberos et le NT hash du gMSA.</p>
       </div>
 
       <pre><code>gMSADumper.py -u 'thomas.powell' -p 'P@ssw0rd123!' -d 'sendai.vl'
@@ -414,12 +326,6 @@ Users      READ</code></pre>
     <section id="s7">
       <span class="section-number">07 - User Access</span>
       <h2>WinRM as mgtsvc$ and User Flag</h2>
-
-      <div class="signal">
-        <span class="signal-label">What pointed us here</span>
-        <code>mgtsvc$</code> is in <code>Remote Management Users</code> (visible in <code>whoami /all</code>
-        after connecting). Pass-the-Hash to WinRM gives us a shell.
-      </div>
 
       <figure style="margin: 1.6rem 0;">
         <img src="img/bh-sendai-mgtsvc.png" alt="BloodHound -mgtsvc$ memberships"
@@ -448,34 +354,12 @@ PS C:\Users\mgtsvc$\Documents> type C:/user.txt
       <span class="section-number">08 - Post-User Recon</span>
       <h2>Credentials in Service Registry</h2>
 
-      <div class="signal">
-        <span class="signal-label">What pointed us here</span>
-        From the WinRM shell, service enumeration via the registry revealed a custom service
-        with credentials hardcoded in its <code>ImagePath</code> value. A direct read of
-        <code>HKLM\SYSTEM\CurrentControlSet\services</code> filtered on non-svchost executables
-        surfaced it immediately.
-      </div>
-
       <div class="theory">
-        <span class="theory-label">Credentials dans les ImagePath de services - pourquoi ça arrive</span>
+        <span class="theory-label">Service ImagePath credentials</span>
 
-        <p>L'attribut <code>ImagePath</code> d'un service Windows est la ligne de commande exécutée
-          au démarrage du service. Certains services maison ou mal configurés passent des credentials
-          directement sur la ligne de commande -typiquement avec des flags <code>-u</code> / <code>-p</code>
-          -pour que le service puisse s'authentifier contre une ressource réseau au démarrage.</p>
-
-        <p>Ces valeurs sont stockées dans le registre et lisibles par n'importe quel utilisateur
-          authentifié (les ACL par défaut sur <code>HKLM\SYSTEM\CurrentControlSet\services</code>
-          donnent <code>KEY_READ</code> à <code>BUILTIN\Users</code>). Elles apparaissent en clair
-          dans la valeur de type <code>REG_EXPAND_SZ</code> ou <code>REG_SZ</code>.</p>
-
-        <p>La commande PowerShell utilisée ici :</p>
-        <ul>
-          <li>Lit toutes les sous-clés de <code>services</code></li>
-          <li>Filtre celles contenant <code>.exe</code> mais pas <code>svchost.exe</code>
-            (les services custom)</li>
-          <li>Cherche des patterns <code>-u</code> / <code>-p</code> dans les ImagePath</li>
-        </ul>
+        <p>Les ACL par défaut permettent souvent aux utilisateurs authentifiés de lire
+          <code>HKLM\SYSTEM\CurrentControlSet\services</code>. Ici, le service custom expose
+          directement <code>-u</code> / <code>-p</code> dans son <code>ImagePath</code>.</p>
       </div>
 
       <pre><code>dir -Path HKLM:\SYSTEM\CurrentControlSet\services |
@@ -497,14 +381,6 @@ PS C:\Users\mgtsvc$\Documents> type C:/user.txt
       <span class="section-number">09 - Privilege Escalation</span>
       <h2>AD CS ESC4 to Administrator</h2>
 
-      <div class="signal">
-        <span class="signal-label">What pointed us here</span>
-        <code>clifford.davey</code> est membre du groupe <code>ca-operators</code>. Ce groupe a
-        des droits <code>Full Control</code> sur le template <code>SendaiComputer</code>.
-        Certipy identifie cela comme ESC4 : des permissions dangereuses autorisent la réécriture du template, puis la
-        demande d'un certificat en tant qu'Administrator.
-      </div>
-
       <figure style="margin: 1.6rem 0;">
         <img src="img/bh-sendai-clifford.png" alt="BloodHound -clifford.davey memberships"
           style="width:100%; border-radius:6px; border:1px solid var(--border);">
@@ -519,60 +395,56 @@ PS C:\Users\mgtsvc$\Documents> type C:/user.txt
       <div class="theory">
         <span class="theory-label">AD CS ESC4 - réécriture de template</span>
 
-        <p>Dans AD CS, les templates de certificats sont des objets Active Directory stockés dans
-          <code>CN=Certificate Templates,CN=Public Key Services,CN=Services,CN=Configuration</code>.
-          Leurs attributs contrôlent qui peut enrôler, si le demandeur peut spécifier un SAN arbitraire
-          (<code>CT_FLAG_ENROLLEE_SUPPLIES_SUBJECT</code>), quels EKU sont inclus, etc.
-        </p>
+        <p><code>ca-operators</code> had Full Control on <code>SendaiComputer</code>. Rewriting the template
+          with Certipy made it ESC1-like: requester-supplied SAN, Client Authentication EKU, and usable enrollment
+          rights for <code>clifford.davey</code>.</p>
 
-        <p><strong>ESC4</strong> : un principal non-admin a des droits d'écriture sur un template
-          (via <code>WriteProperty</code>, <code>WriteDacl</code>, <code>WriteOwner</code> ou
-          <code>GenericWrite/GenericAll</code>). Ces droits donnent la main sur les attributs du template pour :
-        </p>
-        <ul>
-          <li>Activer <code>CT_FLAG_ENROLLEE_SUPPLIES_SUBJECT</code> → le demandeur peut mettre n'importe
-            quel UPN dans le SAN</li>
-          <li>Ajouter <code>Client Authentication</code> dans les EKU → le certificat servira à
-            l'authentification Kerberos</li>
-          <li>Élargir les droits d'enrôlement → on peut s'auto-autoriser à enrôler</li>
-        </ul>
+        <div class="state-grid">
+          <article class="state-card blocked">
+            <span class="state-label">Before</span>
+            <h3><code>SendaiComputer</code> original</h3>
+            <dl>
+              <div><dt>Name flag</dt><dd><code>SubjectAltRequireDns</code>, SAN imposed by the DC.</dd></div>
+              <div><dt>Enrollment</dt><dd><code>AutoEnrollment</code></dd></div>
+              <div><dt>Rights</dt><dd><code>Domain Computers</code>, <code>Domain Admins</code></dd></div>
+            </dl>
+          </article>
+          <article class="state-card ok">
+            <span class="state-label">After</span>
+            <h3>ESC1-like template</h3>
+            <dl>
+              <div><dt>Name flag</dt><dd><code>ENROLLEE_SUPPLIES_SUBJECT</code>, SAN controlled by requester.</dd></div>
+              <div><dt>Enrollment</dt><dd><code>0</code></dd></div>
+              <div><dt>EKU</dt><dd><code>1.3.6.1.5.5.7.3.2</code> Client Authentication.</dd></div>
+            </dl>
+            <p><code>clifford.davey</code> can enroll with <code>-upn administrator@sendai.vl</code>.</p>
+          </article>
+        </div>
 
-        <p><code>certipy template -write-default-configuration</code> applique une configuration
-          "ESC1-ready" : active le flag SAN, passe l'EKU en Client Auth, réduit la taille de clé
-          minimale. Après ça, le template se comporte comme ESC1.</p>
+        <p>The first certificate request failed with <code>Object SID mismatch</code>: the UPN said
+          Administrator, but the request was still tied to <code>clifford.davey</code>. Supplying
+          Administrator's SID with <code>-sid</code> fixed the mapping and kept the failed attempt explicit.</p>
 
-        <div class="theory-diagram">Avant (SendaiComputer original)
-          msPKI-Certificate-Name-Flag : SubjectAltRequireDns ← SAN imposé par le DC
-          msPKI-Enrollment-Flag : AutoEnrollment
-          Enrollment Rights : Domain Computers, Domain Admins
-
-          ↓ certipy template -write-default-configuration ↓
-
-          Après (SendaiComputer modifié)
-          msPKI-Certificate-Name-Flag : 1 (ENROLLEE_SUPPLIES_SUBJECT) ← SAN libre
-          msPKI-Enrollment-Flag : 0
-          pKIExtendedKeyUsage : 1.3.6.1.5.5.7.3.2 (Client Auth)
-          → clifford.davey peut enrôler et fournir -upn administrator@sendai.vl</div>
-
-        <p style="margin-top:.8rem;"><strong>Pourquoi le premier certificat a échoué (SID mismatch)</strong></p>
-        <p>Le premier <code>certipy req</code> sans <code>-sid</code> a produit un certificat sans
-          extension SID. À l'authentification, le KDC a comparé l'UPN du certificat avec l'objet AD
-          correspondant et a détecté que le SID de <code>clifford.davey</code> (qui a fait la demande)
-          ne correspondait pas au SID d'Administrator → rejet avec <code>Object SID mismatch</code>.</p>
-        <p>La correction : passer <code>-sid S-1-5-21-...-500</code> explicitement. Certipy inclut
-          alors le SID Administrator dans une extension SAN URL et dans la security extension.
-          Le KDC valide le SID embarqué, le mappe sur Administrator, et émet le TGT.</p>
-
-        <div class="theory-diagram">Sans -sid
-          Certificat : SAN UPN = administrator@sendai.vl
-          SID extension = (absente)
-          KDC : UPN résout Administrator mais SID ≠ SID(clifford.davey) → REJECT
-
-          Avec -sid S-1-5-21-3085872742-570972823-736764132-500
-          Certificat : SAN UPN = administrator@sendai.vl
-          SAN URL SID = S-1-5-21-...-500
-          Security ext SID = S-1-5-21-...-500
-          KDC : SID correspond à Administrator → TGT émis pour Administrator</div>
+        <div class="state-grid">
+          <article class="state-card blocked">
+            <span class="state-label">Failed request</span>
+            <h3>Without <code>-sid</code></h3>
+            <dl>
+              <div><dt>SAN UPN</dt><dd><code>administrator@sendai.vl</code></dd></div>
+              <div><dt>SID ext</dt><dd>Absent</dd></div>
+              <div><dt>KDC result</dt><dd>UPN resolves to Administrator, but the requester SID does not match.</dd></div>
+            </dl>
+          </article>
+          <article class="state-card ok">
+            <span class="state-label">Working request</span>
+            <h3>With Administrator SID</h3>
+            <dl>
+              <div><dt>SAN UPN</dt><dd><code>administrator@sendai.vl</code></dd></div>
+              <div><dt>SAN URL SID</dt><dd><code>S-1-5-21-...-500</code></dd></div>
+              <div><dt>KDC result</dt><dd>SID maps to Administrator and a TGT is issued.</dd></div>
+            </dl>
+          </article>
+        </div>
       </div>
 
       <h3>Step 1 -Vérifier ESC4 avec certipy find</h3>
@@ -662,73 +534,76 @@ objectSid: S-1-5-21-3085872742-570972823-736764132-500</code></pre>
 PS C:\Users\Administrator\Desktop> type root.txt
 <span class="good">[redacted]</span></code></pre>
 
-      <div class="pwned-badge">
-        <div class="pwned-dot"></div>
-        Machine Pwned -Null SMB → Expired Password → gMSA → Service Registry → ESC4 → Administrator
-      </div>
     </section>
 
     <section id="s11">
       <span class="section-number">11 - Summary</span>
       <h2>Full Attack Chain</h2>
 
-      <div class="ascii-chain">
-        <pre><code>
-  NO CREDENTIALS
-  ─────────────────────────────────────────────────────────────────────
-  Null SMB session → sendai share readable
-  transfer/ subdirectories → initial username list
-  RID brute (guest auth) → full domain user list
-       │
-       ▼
-  EMPTY PASSWORD SPRAY
-  ─────────────────────────────────────────────────────────────────────
-  elliot.yates, thomas.powell → STATUS_PASSWORD_MUST_CHANGE
-  incident.txt confirms: passwords were expired after pentest
-       │
-       ▼
-  FORCE EXPIRED PASSWORD CHANGE
-  ─────────────────────────────────────────────────────────────────────
-  changepasswd.py → null SAMR bind → no old password needed
-  thomas.powell:P@ssw0rd123!
-       │
-       ▼
-  BLOODHOUND + GROUP SELF-ADD
-  ─────────────────────────────────────────────────────────────────────
-  thomas.powell → Self-Membership on admsvc
-  admsvc → can read msDS-ManagedPassword of mgtsvc$
-       │
-       ▼
-  gMSA DUMP
-  ─────────────────────────────────────────────────────────────────────
-  gMSADumper.py → mgtsvc$ NT hash
-  mgtsvc$ ∈ Remote Management Users → WinRM
-       │
-       ▼
-  USER FLAG
-  ─────────────────────────────────────────────────────────────────────
-  evil-winrm-py Pass-the-Hash as mgtsvc$
-       │
-       ▼
-  SERVICE REGISTRY CREDENTIAL
-  ─────────────────────────────────────────────────────────────────────
-  HKLM\SYSTEM\CurrentControlSet\services
-  helpdesk.exe -u clifford.davey -p [redacted] → cleartext in ImagePath
-       │
-       ▼
-  AD CS ESC4
-  ─────────────────────────────────────────────────────────────────────
-  clifford.davey ∈ ca-operators → Full Control on SendaiComputer template
-  certipy template -write-default-configuration → ENROLLEE_SUPPLIES_SUBJECT
-  certipy req -upn administrator@sendai.vl -sid S-1-5-21-...-500
-  → certificate with Administrator SID
-       │
-       ▼
-  ADMINISTRATOR
-  ─────────────────────────────────────────────────────────────────────
-  certipy auth → TGT + NT hash for Administrator
-  evil-winrm-py Pass-the-Hash → root.txt
-        </code></pre>
+      <div class="flow-chain">
+        <div class="flow-step">
+          <div>
+            <span class="flow-kicker">No credentials</span>
+            <h3>Null SMB to username list</h3>
+            <p>The <code>sendai</code> share is readable; <code>transfer/</code> leaks users and RID brute completes the list.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div>
+            <span class="flow-kicker">Password state</span>
+            <h3>Empty spray returns must-change</h3>
+            <p><code>elliot.yates</code> and <code>thomas.powell</code> return <code>STATUS_PASSWORD_MUST_CHANGE</code>.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div>
+            <span class="flow-kicker">Takeover</span>
+            <h3>Force expired password change</h3>
+            <p><code>changepasswd.py</code> uses null SAMR and sets <code>thomas.powell:P@ssw0rd123!</code>.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div>
+            <span class="flow-kicker">Graph path</span>
+            <h3>BloodHound + group self-add</h3>
+            <p><code>thomas.powell</code> adds himself to <code>admsvc</code>, which can read <code>mgtsvc$</code>'s managed password.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div>
+            <span class="flow-kicker">Credential material</span>
+            <h3>gMSA dump</h3>
+            <p><code>gMSADumper.py</code> extracts the <code>mgtsvc$</code> NT hash and Kerberos keys.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div>
+            <span class="flow-kicker">User shell</span>
+            <h3>WinRM as <code>mgtsvc$</code></h3>
+            <p><code>mgtsvc$</code> is in Remote Management Users, so Pass-the-Hash reaches <code>user.txt</code>.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div>
+            <span class="flow-kicker">Post-user recon</span>
+            <h3>Service registry credential</h3>
+            <p><code>helpdesk.exe</code> stores <code>clifford.davey</code>'s cleartext password in <code>ImagePath</code>.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div>
+            <span class="flow-kicker">AD CS</span>
+            <h3>ESC4 template rewrite</h3>
+            <p><code>clifford.davey</code> reaches <code>ca-operators</code>, rewrites <code>SendaiComputer</code>, then enrolls with Administrator SID.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div>
+            <span class="flow-kicker">Domain admin</span>
+            <h3>Administrator hash and root flag</h3>
+            <p><code>certipy auth</code> yields Administrator NT hash; WinRM Pass-the-Hash reads <code>root.txt</code>.</p>
+          </div>
+        </div>
       </div>
 
       <div class="table-wrap">
@@ -793,68 +668,7 @@ PS C:\Users\Administrator\Desktop> type root.txt
           </tbody>
         </table>
       </div>
-    </section>
 
-    <section id="s12">
-      <span class="section-number">12 - Lessons</span>
-      <h2>Key Takeaways</h2>
-
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Concept</th>
-              <th>Lesson</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Null SMB partiel</td>
-              <td>Même sans accès aux shares administratifs, une share accessible en lecture anonyme
-                peut livrer une liste d'utilisateurs via les noms de répertoires.</td>
-            </tr>
-            <tr>
-              <td>STATUS_PASSWORD_MUST_CHANGE</td>
-              <td>Ne pas confondre avec STATUS_LOGON_FAILURE. Un compte expiré peut être pris en main
-                sans connaître l'ancien mot de passe via SAMR null bind -<code>changepasswd.py</code>
-                gère ce cas là où <code>smbpasswd</code> échoue.</td>
-            </tr>
-            <tr>
-              <td>gMSA</td>
-              <td>Un gMSA dont la <code>msDS-GroupMSAMembership</code> inclut un groupe accessible
-                est une cible directe : lecture LDAP → NT hash → Pass-the-Hash. Pas d'exploit,
-                juste des ACL mal positionnées.</td>
-            </tr>
-            <tr>
-              <td>Service ImagePath</td>
-              <td>Les services custom passent parfois des credentials sur leur ligne de commande.
-                Une lecture du registre <code>HKLM\SYSTEM\CurrentControlSet\services</code>
-                filtré sur les exécutables non-svchost doit toujours faire partie de l'énumération
-                post-shell.</td>
-            </tr>
-            <tr>
-              <td>ESC4</td>
-              <td>Des droits d'écriture sur un template AD CS suffisent à le transformer en ESC1.
-                <code>certipy template -write-default-configuration</code> applique la configuration
-                la plus permissive en une commande, puis le template devient exploitable comme ESC1.
-              </td>
-            </tr>
-            <tr>
-              <td>SID mismatch (ESC4/ESC1)</td>
-              <td>Sur un DC avec security extension activée, demander un certificat avec un UPN arbitraire
-                sans fournir le SID correspondant produit <code>Object SID mismatch</code>. Le flag
-                <code>-sid</code> de Certipy embarque explicitement le SID cible dans le certificat
-                et contourne la vérification.
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="pwned-badge">
-        <div class="pwned-dot"></div>
-        Machine Pwned -Null SMB → Expired Password → gMSA → Service Registry → ESC4 → Administrator
-      </div>
     </section>
 
   </div>

@@ -29,13 +29,13 @@
 
 <header>
   <nav>
-  <a class="nav-logo" href="../index.html" aria-label="Accueil Abdelaaziz Belkhair"><img src="../assets/img/anubis-mark.webp" alt="Logo Anubis Abdelaaziz Belkhair"></a>
+  <a class="wordmark" href="../index.html"><span class="dot"></span> Abdelaaziz Belkhair</a>
       <ul class="nav-links">
         <li><a href="../index.html#about">Profil</a></li>
         <li><a href="../projects.html">Travail</a></li>
         <li><a href="../writeups.html" class="active">Writeups</a></li>
         <li><a href="../blog.html">Articles</a></li>
-        <li><a href="../index.html#experience">Expérience</a></li>
+        <li><a href="../index.html#parcours">Expérience</a></li>
         <li><a href="../index.html#contact">Contact</a></li>
         <li><a href="../cv.pdf" download>CV</a></li>
       </ul>
@@ -82,7 +82,6 @@
       <li><a href="#s7">DCSync / NTDS Dump</a></li>
       <li><a href="#s8">Evidence</a></li>
       <li><a href="#s9">Full Attack Chain</a></li>
-      <li><a href="#s10">Key Takeaways</a></li>
     </ol>
   </div>
   <section id="s1">
@@ -118,12 +117,6 @@
     <span class="section-number">02 - Initial Access</span>
     <h2>Initial Access as Visitor</h2>
 
-    <div class="signal">
-      <span class="signal-label">What pointed us here</span>
-      The room gave us a visitor-style credential. The mistake would be to treat it as useless.
-      In AD, a normal authenticated user can still query a lot of directory data, including SPNs.
-    </div>
-
 <pre><code><span class="comment"># Validate the credential and get the domain view</span>
 nxc smb 10.130.154.0 \
     -d COOCTUS.CORP \
@@ -141,16 +134,7 @@ nxc smb 10.130.154.0 \
     <span class="section-number">03 - Credential Access</span>
     <h2>Kerberoasting password-reset</h2>
 
-    <div class="signal">
-      <span class="signal-label">What pointed us here</span>
-      LDAP enumeration showed <code>password-reset</code> with the SPN
-      <code>HTTP/dc.cooctus.corp</code>. An SPN on a user account means Kerberoasting is in play:
-      we can request a service ticket and crack the service account's password offline.
-    </div>
-
-    <p>Kerberoasting is useful because the KDC gives any authenticated user a service ticket for
-    a registered SPN. That ticket is encrypted with the service account's long-term key. If the
-    password is weak, the ticket becomes an offline password-cracking target.</p>
+    <p>The SPN made <code>password-reset</code> roastable, and the ticket cracked offline.</p>
 
 <pre><code><span class="comment"># Request TGS tickets for SPN-bearing users</span>
 impacket-GetUserSPNs \
@@ -171,13 +155,6 @@ john --wordlist=/usr/share/wordlists/rockyou.txt TGS.txt
   <section id="s4">
     <span class="section-number">04 - Delegation Analysis</span>
     <h2>Why Delegation Changed the Box</h2>
-
-    <div class="signal">
-      <span class="signal-label">What pointed us here</span>
-      <code>password-reset</code> had constrained delegation to
-      <code>HTTP/dc.cooctus.corp</code> with Protocol Transition. That is not just a service
-      account. That is an account allowed to request tickets while pretending to be another user.
-    </div>
 
 <pre><code><span class="comment"># Confirm delegation rights</span>
 impacket-findDelegation \
@@ -214,12 +191,8 @@ impacket-getST \
 <span class="good">[*] Changing service from HTTP/dc.cooctus.corp to cifs/dc.cooctus.corp</span>
 <span class="good">[*] Saved credential to Administrator@cifs_dc.cooctus.corp@COOCTUS.CORP.ccache</span></code></pre>
 
-    <div class="callout">
-      <span class="callout-label">Why this is not magic</span>
-      Kerberos tickets are encrypted to the account that owns the SPN. The service name is not
-      the same thing as the cryptographic key. <code>-altservice</code> abuses the part that can
-      be rewritten without invalidating the PAC.
-    </div>
+    <p><code>-altservice</code> works here because the ticket is still encrypted to the account
+    that owns the delegated SPN; the service name can be changed without breaking the ticket.</p>
   </section>
   <section id="s6">
     <span class="section-number">06 - Execution</span>
@@ -242,13 +215,6 @@ impacket-psexec \
   <section id="s7">
     <span class="section-number">07 - Credential Dumping</span>
     <h2>DCSync / NTDS Dump</h2>
-
-    <div class="signal">
-      <span class="signal-label">What pointed us here</span>
-      We had a ticket impersonating Administrator to the DC. At that point, dumping NTDS is the
-      proof of domain impact. It shows the chain did not only give a shell, it gave control over
-      domain secrets.
-    </div>
 
 <pre><code><span class="comment"># Dump domain secrets with the Kerberos ticket</span>
 export KRB5CCNAME=Administrator@cifs_dc.cooctus.corp@COOCTUS.CORP.ccache
@@ -282,45 +248,49 @@ impacket-secretsdump \
     <span class="section-number">09 - Summary</span>
     <h2>Full Attack Chain</h2>
 
-    <div class="ascii-chain">
-<pre><code>
-  INITIAL LOW-PRIV CREDENTIAL
-  ─────────────────────────────────────────────────────────────────────
-  Visitor:REDACTED_VISITOR_PASSWORD validates against COOCTUS.CORP
-  user.txt recovered: THM{REDACTED}
-       │
-       ▼
-  SPN ENUMERATION
-  ─────────────────────────────────────────────────────────────────────
-  Authenticated LDAP/Kerberos enumeration exposes password-reset
-  SPN: HTTP/dc.cooctus.corp
-       │
-       ▼
-  KERBEROAST
-  ─────────────────────────────────────────────────────────────────────
-  GetUserSPNs requests TGS for password-reset
-  john cracks the TGS hash
-  Credential: password-reset:REDACTED_SERVICE_PASSWORD
-       │
-       ▼
-  DELEGATION ANALYSIS
-  ─────────────────────────────────────────────────────────────────────
-  password-reset has constrained delegation with Protocol Transition
-  Allowed target: HTTP/dc.cooctus.corp
-       │
-       ▼
-  S4U IMPERSONATION
-  ─────────────────────────────────────────────────────────────────────
-  getST impersonates Administrator to HTTP/dc.cooctus.corp
-  -altservice rewrites the service to CIFS
-  Kerberos ccache saved for Administrator to CIFS/DC
-       │
-       ▼
-  SYSTEM ON DC + NTDS DUMP
-  ─────────────────────────────────────────────────────────────────────
-  psexec -k -no-pass uses the ticket
-  secretsdump confirms full domain compromise
-</code></pre>
+    <div class="flow-chain">
+      <div class="flow-step">
+        <div>
+          <span class="flow-kicker">Foothold</span>
+          <h3>Visitor credential</h3>
+          <p><code>Visitor</code> validates against <code>COOCTUS.CORP</code> and exposes the user flag.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div>
+          <span class="flow-kicker">Enumeration</span>
+          <h3>SPN discovery</h3>
+          <p>Authenticated LDAP/Kerberos enumeration exposes <code>password-reset</code> with <code>HTTP/dc.cooctus.corp</code>.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div>
+          <span class="flow-kicker">Credential access</span>
+          <h3>Kerberoast <code>password-reset</code></h3>
+          <p><code>GetUserSPNs</code> requests the TGS and <code>john</code> cracks the service password offline.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div>
+          <span class="flow-kicker">Delegation</span>
+          <h3>Protocol Transition confirmed</h3>
+          <p><code>password-reset</code> can impersonate users to <code>HTTP/dc.cooctus.corp</code>.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div>
+          <span class="flow-kicker">Ticket abuse</span>
+          <h3>S4U + altservice</h3>
+          <p><code>getST</code> impersonates Administrator, then rewrites the service to CIFS for DC access.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div>
+          <span class="flow-kicker">Impact</span>
+          <h3>SYSTEM on DC + NTDS dump</h3>
+          <p><code>psexec -k -no-pass</code> uses the ticket and <code>secretsdump</code> confirms domain compromise.</p>
+        </div>
+      </div>
     </div>
 
     <div class="table-wrap">
@@ -337,47 +307,7 @@ impacket-secretsdump \
         </tbody>
       </table>
     </div>
-  </section>
-  <section id="s10">
-    <span class="section-number">10 - Lessons</span>
-    <h2>Key Takeaways</h2>
 
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Concept</th><th>Lesson</th></tr></thead>
-        <tbody>
-          <tr>
-            <td>Low-priv users</td>
-            <td>A basic domain account is still enough to enumerate SPNs, delegation settings,
-            and many useful AD relationships.</td>
-          </tr>
-          <tr>
-            <td>Kerberoasting</td>
-            <td>The risk is not only that the account has an SPN. The real risk appears when the
-            SPN account also has sensitive delegation rights.</td>
-          </tr>
-          <tr>
-            <td>Protocol Transition</td>
-            <td>When <code>TRUSTED_TO_AUTH_FOR_DELEGATION</code> is present, the account can
-            manufacture a service ticket as another user. That is a very different level of impact.</td>
-          </tr>
-          <tr>
-            <td>-altservice</td>
-            <td>If the account is delegated to HTTP but you need CIFS, test whether the ticket can
-            be rewritten for the service you actually need.</td>
-          </tr>
-          <tr>
-            <td>NTDS impact</td>
-            <td>A DC shell is impact. An NTDS dump is proof that the whole domain is compromised.</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div class="pwned-badge">
-      <div class="pwned-dot"></div>
-      Room Completed - Visitor → Kerberoast → Protocol Transition → CIFS Ticket → Domain Compromise
-    </div>
   </section>
 
 </div>

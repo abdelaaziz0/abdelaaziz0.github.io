@@ -34,13 +34,13 @@
 <body>
     <header>
         <nav>
-            <a href="../index.html" class="logo" aria-label="Accueil Abdelaaziz Belkhair"><img src="../assets/img/anubis-mark.webp" alt="Logo Anubis Abdelaaziz Belkhair"></a>
+            <a class="wordmark" href="../index.html"><span class="dot"></span> Abdelaaziz Belkhair</a>
       <ul class="nav-links">
         <li><a href="../index.html#about">Profil</a></li>
         <li><a href="../projects.html">Travail</a></li>
         <li><a href="../writeups.html" class="active">Writeups</a></li>
         <li><a href="../blog.html">Articles</a></li>
-        <li><a href="../index.html#experience">Expérience</a></li>
+        <li><a href="../index.html#parcours">Expérience</a></li>
         <li><a href="../index.html#contact">Contact</a></li>
         <li><a href="../cv.pdf" download>CV</a></li>
       </ul>
@@ -95,8 +95,6 @@
                     <li><a href="#s6">SSTI - From Template to Shell</a></li>
                     <li><a href="#s7">Full Attack Chain</a></li>
                     <li><a href="#s8">Vulnerability Summary</a></li>
-                    <li><a href="#s9">Defensive Recommendations</a></li>
-                    <li><a href="#s10">Key Lessons</a></li>
                 </ol>
             </nav>
 
@@ -110,10 +108,9 @@
                     <strong>Stack</strong>: Node.js / Express / nunjucks / needle / MailHog
                 </div>
 
-                <p>I'll be honest - this one took me a while. It's one of those challenges where no single bug is enough
-                    on its own. You've got to pull five completely different threads and braid them into a single rope
-                    strong enough to hang the whole application. Let me walk you through how each piece clicked into
-                    place, from the moment I loaded the page to the moment the flag appeared.</p>
+                <p>This one is a chain challenge: no single bug is enough on its own. The path only becomes useful once
+                    mass assignment, parser disagreement, prototype pollution, a needle gadget, and template rendering
+                    line up.</p>
 
                 <h2 id="s1">1. Reconnaissance</h2>
 
@@ -177,12 +174,6 @@
                     kick in when the property is <strong>absent</strong> from the object. If I <em>include</em>
                     <code>role</code> in my request body, my value gets used instead - passed straight through to the
                     database.</p>
-
-                <div class="info-box">
-                    <strong>Why this works</strong>: JavaScript's <code>const { role = "guest" } = req.body</code> only
-                    applies the default when <code>req.body.role</code> is <code>undefined</code>. If I send
-                    <code>"role": "admin"</code>, the default is ignored.
-                </div>
 
                 <h3>The Exploit</h3>
 
@@ -301,13 +292,6 @@ const editBountiesAPI = async (req, res) => {
                     database. Since bounty descriptions are rendered with nunjucks' <code>| safe</code> filter (to
                     support rich HTML in the seeded demo data), anything I inject gets rendered without escaping.</p>
 
-                <div class="warning-box">
-                    <strong>This is the pattern that kills</strong>: The defense existed, it was just applied
-                    inconsistently. The add endpoint is safe. The edit endpoint is wide open. One code review of the
-                    edit route alone would have caught it - but nobody reviewed it separately from the add route they'd
-                    already secured.
-                </div>
-
                 <p>But I'm not here for stored XSS. I need something more powerful. What I really want is to abuse that
                     <code>mergedeep</code> call for something far nastier.</p>
 
@@ -367,14 +351,6 @@ const editBountiesAPI = async (req, res) => {
                     prototype pollution. Needle dutifully writes the response body to
                     <code>/app/views/index.html</code>.</p>
 
-                <div class="info-box">
-                    <strong>The subtlety here is terrifying</strong>: The vulnerability isn't in the code that gets
-                    exploited (needle). It's in a completely different part of the application (the merge function). A
-                    reviewer auditing needle usage in isolation would find nothing wrong. A reviewer auditing the merge
-                    function might spot the pollution but not imagine the needle gadget. Only full data-flow analysis
-                    reveals the chain.
-                </div>
-
                 <h2 id="s6">6. SSTI - From Template Overwrite to Shell Access</h2>
 
                 <h3>Crafting the Payload</h3>
@@ -411,28 +387,50 @@ const editBountiesAPI = async (req, res) => {
 
                 <h2 id="s7">7. Full Attack Chain</h2>
 
-                <pre><code>┌─────────────────────────────────────────────────────────────────────┐
-│              INTERGALACTIC BOUNTY - FULL KILL CHAIN                │
-├──────────┬──────────────────────────────────────────────────────────┤
-│ Phase 1  │ Mass Assignment → Register with role: "admin"           │
-│          │ POST /api/register with {"role":"admin"} in body        │
-├──────────┼──────────────────────────────────────────────────────────┤
-│ Phase 2  │ Email Parser Differential → Steal OTP                   │
-│          │ Register with RFC 5322 comment to cc test@email.htb     │
-│          │ Read OTP from inbox, verify account                     │
-├──────────┼──────────────────────────────────────────────────────────┤
-│ Phase 3  │ Login → JWT with role: "admin" → access /transmit       │
-├──────────┼──────────────────────────────────────────────────────────┤
-│ Phase 4  │ Prototype Pollution via edit endpoint                   │
-│          │ PUT /api/bounties/2 with __proto__.output = template    │
-├──────────┼──────────────────────────────────────────────────────────┤
-│ Phase 5  │ needle gadget → Arbitrary file write                    │
-│          │ POST /api/transmit fetches SSTI payload, needle writes  │
-│          │ response to /app/views/index.html via polluted proto    │
-├──────────┼──────────────────────────────────────────────────────────┤
-│ Phase 6  │ SSTI Execution → Visit index page, nunjucks evaluates   │
-│          │ template, execSync('tail /flag.txt') → flag rendered    │
-└──────────┴──────────────────────────────────────────────────────────┘</code></pre>
+                <div class="flow-chain">
+                    <div class="flow-step">
+                        <div>
+                            <span class="flow-kicker">Phase 1</span>
+                            <h3>Mass assignment</h3>
+                            <p>Register with <code>{"role":"admin"}</code> in the body and land an admin account.</p>
+                        </div>
+                    </div>
+                    <div class="flow-step">
+                        <div>
+                            <span class="flow-kicker">Phase 2</span>
+                            <h3>Email parser differential</h3>
+                            <p>Use an RFC 5322 comment to copy <code>test@email.htb</code>, read the OTP, and verify the account.</p>
+                        </div>
+                    </div>
+                    <div class="flow-step">
+                        <div>
+                            <span class="flow-kicker">Phase 3</span>
+                            <h3>Admin JWT</h3>
+                            <p>Login returns a JWT with <code>role: "admin"</code>, unlocking <code>/transmit</code>.</p>
+                        </div>
+                    </div>
+                    <div class="flow-step">
+                        <div>
+                            <span class="flow-kicker">Phase 4</span>
+                            <h3>Prototype pollution</h3>
+                            <p><code>PUT /api/bounties/2</code> sets <code>__proto__.output</code> to the target template path.</p>
+                        </div>
+                    </div>
+                    <div class="flow-step">
+                        <div>
+                            <span class="flow-kicker">Phase 5</span>
+                            <h3><code>needle</code> file-write gadget</h3>
+                            <p><code>POST /api/transmit</code> fetches the SSTI payload and writes it to <code>/app/views/index.html</code>.</p>
+                        </div>
+                    </div>
+                    <div class="flow-step">
+                        <div>
+                            <span class="flow-kicker">Phase 6</span>
+                            <h3>Nunjucks SSTI execution</h3>
+                            <p>Visiting the index page evaluates the template and renders the <code>tail /flag.txt</code> output.</p>
+                        </div>
+                    </div>
+                </div>
 
                 <h2 id="s8">8. Vulnerability Summary</h2>
 
@@ -484,91 +482,6 @@ const editBountiesAPI = async (req, res) => {
                         </tr>
                     </tbody>
                 </table>
-
-                <h2 id="s9">9. Defensive Recommendations</h2>
-
-                <h3>Mass Assignment</h3>
-
-                <p>Never destructure sensitive fields from request bodies. Explicitly assign server-controlled values:
-                </p>
-
-                <pre><code>// Vulnerable
-const { email, password, role = "guest" } = req.body;
-
-// Fixed - role is never trusted from the client
-const { email, password } = req.body;
-const role = "guest";</code></pre>
-
-                <h3>Parser Differentials</h3>
-
-                <p>If <code>email-addresses</code> validates the input, extract the normalized canonical address from
-                    its parse result and use <em>only</em> that downstream. Never pass the raw string to a different
-                    parser that might interpret it differently.</p>
-
-                <h3>Sanitization Consistency</h3>
-
-                <p>Sanitization should live at the model layer - inside <code>BountyModel.create</code> and
-                    <code>BountyModel.update</code> - not selectively in individual route handlers. Centralizing it
-                    makes it impossible to forget.</p>
-
-                <h3>Prototype Pollution</h3>
-
-                <p>Block dangerous keys before processing any merge operation:</p>
-
-                <pre><code>const BLOCKED_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
-
-function safeMerge(target, source) {
-    for (let key in source) {
-        if (BLOCKED_KEYS.has(key)) continue;
-        // ... rest of merge logic
-    }
-}</code></pre>
-
-                <p>Alternatively, use <code>Object.create(null)</code> for configuration objects - these have no
-                    prototype chain and are immune to pollution.</p>
-
-                <h3>The needle Gadget</h3>
-
-                <p>Use <code>Object.create(null)</code> for options objects passed to third-party libraries, eliminating
-                    prototype chain lookups entirely:</p>
-
-                <pre><code>const options = Object.create(null);
-options.compressed = true;
-options.follow_max = 0;</code></pre>
-
-                <h3>SSTI Prevention</h3>
-
-                <p>Never allow user-controlled data to reach the filesystem in a location the template engine renders.
-                    Any file-write primitive - prototype pollution gadgets, path traversal, or SSRF - should be treated
-                    as critical in applications using server-side template engines.</p>
-
-                <h2 id="s10">10. Key Lessons</h2>
-
-                <p>The most important insight from this challenge is that vulnerabilities rarely exist in isolation.
-                    Every defensive measure in this application was applied <em>somewhere</em> - the sanitizer existed,
-                    the domain check worked correctly, the <code>file://</code> protocol was blocked. The attack
-                    succeeded because defenses were applied <strong>inconsistently</strong>, and because the
-                    intersections between components created emergent behavior no single component review would have
-                    caught.</p>
-
-                <p>Prototype pollution is particularly insidious in this regard. The vulnerability isn't in the code
-                    that gets exploited (needle), but in a completely unrelated part of the application (the merge
-                    function). A reviewer auditing needle usage in isolation would find nothing wrong. A reviewer
-                    auditing the merge function might spot the pollution but never imagine the needle gadget. Only a
-                    full data-flow analysis - tracing untrusted input through every system that subsequently handles it
- - reveals the complete picture.</p>
-
-                <p>The defensive principle that follows: treat <code>Object.prototype</code> as a security boundary.
-                    Validate that no untrusted data ever reaches it, the same way you'd protect SQL query construction
-                    or shell command assembly. Because once the prototype is poisoned, every object in the process
-                    becomes a potential weapon - and you'll never see it coming by looking at the victim code alone.</p>
-
-                <div class="pwned-banner">
-                    <span class="pwned-icon"><i class="fas fa-flag"></i></span>
-                    <div class="pwned-text">Machine Pwned</div>
-                    <p class="pwned-sub">Mass Assignment → Parser Differential → Prototype Pollution → needle Gadget →
-                        SSTI → Flag captured</p>
-                </div>
 
             </div>
         </article>

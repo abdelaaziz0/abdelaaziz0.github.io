@@ -6,19 +6,51 @@ body {
   position: sticky;
   top: 0;
   z-index: 100;
-  min-height: 56px;
-  padding: 0 2rem;
-  background: rgba(var(--bg-rgb), 0.92);
+  min-height: 64px;
+  padding: 0 max(1.5rem, calc((100vw - 1120px) / 2 + 1.5rem));
+  background: rgba(var(--bg-rgb), 0.85);
   border-bottom: 1px solid var(--border);
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(10px);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1.5rem;
 }
 
+.wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--text-strong);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.wordmark .dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 9999px;
+  background: var(--accent);
+}
+
 .home-nav .nav-links {
-  gap: 1.35rem;
+  gap: 1.5rem;
+}
+
+.home-nav .nav-links a {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.home-nav .nav-links a:hover,
+.home-nav .nav-links a.active {
+  color: var(--text-strong);
 }
 
 .hero-home {
@@ -74,7 +106,7 @@ body {
   align-items: center;
   gap: 0.55rem;
   color: var(--accent-2);
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
   font-size: 0.7rem;
   letter-spacing: 0.15em;
   text-transform: uppercase;
@@ -84,11 +116,11 @@ body {
   max-width: 780px;
   margin: 1.35rem 0 1.3rem;
   color: var(--text-strong);
-  font-family: "DM Serif Display", Georgia, serif;
+  font-family: "Inter", system-ui, sans-serif;
   font-size: clamp(3.2rem, 9vw, 6.8rem);
   font-weight: 400;
   letter-spacing: 0;
-  line-height: 0.95;
+  line-height: 0.98;
 }
 
 .hero-copy {
@@ -111,14 +143,15 @@ body {
   justify-content: center;
   gap: 0.55rem;
   min-height: 42px;
-  padding: 0.6rem 1rem;
+  padding: 0.6rem 1.15rem;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 9999px;
   color: var(--text);
-  font-family: "IBM Plex Mono", monospace;
-  font-size: 0.72rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-family: "Inter", system-ui, sans-serif;
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .button-primary {
@@ -179,7 +212,7 @@ body {
 
 .panel {
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 12px;
   background: var(--surface);
   padding: 1.4rem;
 }
@@ -189,7 +222,7 @@ body {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1px;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 12px;
   overflow: hidden;
   background: var(--border);
 }
@@ -231,13 +264,15 @@ body {
 .mini-tag {
   display: inline-flex;
   align-items: center;
-  padding: 0.18rem 0.55rem;
-  border: 1px solid rgba(var(--accent-rgb), 0.2);
-  border-radius: 2px;
-  color: var(--accent);
-  font-family: "IBM Plex Mono", monospace;
-  font-size: 0.62rem;
-  letter-spacing: 0.08em;
+  padding: 0.2rem 0.6rem;
+  border: 0;
+  border-radius: 9999px;
+  background: rgba(var(--accent-rgb), 0.12);
+  color: var(--accent-2);
+  font-family: "Inter", system-ui, sans-serif;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
@@ -249,7 +284,7 @@ body {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1px;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 12px;
   overflow: hidden;
   background: var(--border);
 }
@@ -265,7 +300,7 @@ body {
   gap: 0.45rem;
   margin-top: 0.75rem;
   color: var(--accent);
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
   font-size: 0.68rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -284,7 +319,7 @@ body {
   align-items: center;
   justify-content: center;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 9999px;
   background: var(--code-bg);
   color: var(--muted);
   font-size: 1rem;
@@ -324,7 +359,7 @@ body {
 .cert-card-old {
   overflow: hidden;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 12px;
   background: var(--surface);
   transition: transform 0.2s ease, border-color 0.2s ease;
 }
@@ -357,7 +392,7 @@ body {
 .cert-info p {
   margin: 0;
   color: var(--muted);
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
   font-size: 0.65rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -368,7 +403,7 @@ body {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 1px;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 12px;
   overflow: hidden;
   background: var(--border);
 }
@@ -386,7 +421,7 @@ body {
 .proof-card strong {
   display: block;
   color: var(--text-strong);
-  font-family: "DM Serif Display", Georgia, serif;
+  font-family: "Inter", system-ui, sans-serif;
   font-size: 1.35rem;
   font-weight: 400;
   line-height: 1.2;
@@ -468,7 +503,7 @@ body {
   align-items: center;
   justify-content: center;
   border: 1px solid rgba(var(--accent-rgb), 0.2);
-  border-radius: 4px;
+  border-radius: 9999px;
   color: var(--accent-2);
   background: var(--code-bg);
 }
@@ -478,7 +513,7 @@ body {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1px;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 12px;
   overflow: hidden;
   background: var(--border);
 }
@@ -491,8 +526,10 @@ body {
 .fact .fact-k {
   display: block;
   color: var(--text-strong);
-  font-family: "DM Serif Display", Georgia, serif;
+  font-family: "Inter", system-ui, sans-serif;
   font-size: 1.5rem;
+  font-weight: 400;
+  letter-spacing: 0;
   line-height: 1.15;
 }
 
@@ -500,7 +537,7 @@ body {
   display: block;
   margin-top: 0.5rem;
   color: var(--muted);
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
   font-size: 0.66rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -515,7 +552,7 @@ body {
   flex-direction: column;
   gap: 1px;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 12px;
   overflow: hidden;
   background: var(--border);
 }
@@ -525,8 +562,10 @@ body {
 }
 
 .domain-lead h3 {
-  font-family: "DM Serif Display", Georgia, serif;
+  font-family: "Inter", system-ui, sans-serif;
   font-size: 1.5rem;
+  font-weight: 400;
+  letter-spacing: 0;
   line-height: 1.2;
 }
 
@@ -708,7 +747,7 @@ body {
   .contact-grid-alt,
   .facts-strip,
   .domain-stack {
-    border-radius: 3px;
+    border-radius: 8px;
   }
 
   .fact .fact-k {

@@ -19,38 +19,40 @@
   align-items: center;
   gap: 0.45rem;
   padding: 0.25rem 0.7rem;
-  border: 1px solid rgba(var(--accent-rgb), 0.25);
-  border-radius: 2px;
-  color: var(--accent);
-  font-family: "IBM Plex Mono", monospace;
+  border: 0;
+  border-radius: 9999px;
+  background: rgba(var(--accent-rgb), 0.12);
+  color: var(--accent-2);
+  font-family: "Inter", system-ui, sans-serif;
   font-size: 0.68rem;
-  letter-spacing: 0.08em;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 .article-date {
+  background: var(--border);
   color: var(--muted);
-  border-color: var(--border);
 }
 
 .article-tag.offensive,
 .article-tag.kev,
 .warning {
+  background: rgba(var(--red-rgb), 0.12);
   color: var(--red);
-  border-color: rgba(var(--red-rgb), 0.3);
 }
 
 .article-tag.windows,
 .article-tag.mitre,
 .article-tag.modular {
+  background: rgba(var(--blue-rgb), 0.12);
   color: var(--blue);
-  border-color: rgba(var(--blue-rgb), 0.3);
 }
 
 .article-tag.success,
 .success {
+  background: rgba(var(--green-rgb), 0.12);
   color: var(--green);
-  border-color: rgba(var(--green-rgb), 0.3);
 }
 
 .article-hero h1,
@@ -58,7 +60,7 @@
   max-width: 780px;
   margin-bottom: 1.4rem;
   color: var(--text-strong);
-  font-family: "DM Serif Display", Georgia, serif;
+  font-family: "Inter", system-ui, sans-serif;
   font-size: clamp(2.6rem, 7vw, 4.5rem);
   font-weight: 400;
   letter-spacing: 0;
@@ -79,7 +81,7 @@
   overflow: hidden;
   margin-top: 2rem;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 12px;
   background: var(--border);
 }
 
@@ -92,7 +94,7 @@
 .hero-stat-value {
   display: block;
   color: var(--accent);
-  font-family: "DM Serif Display", Georgia, serif;
+  font-family: "Inter", system-ui, sans-serif;
   font-size: 1.45rem;
   font-weight: 400;
   overflow-wrap: anywhere;
@@ -102,7 +104,7 @@
   display: block;
   margin-top: 0.25rem;
   color: var(--muted-soft);
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
   font-size: 0.62rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -116,7 +118,7 @@
   overflow: hidden;
   margin: 1.4rem 0;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 12px;
   background: var(--border);
 }
 
@@ -130,7 +132,7 @@
   padding: 1.1rem;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 12px;
 }
 
 .tool-grid .tool-card,
@@ -161,7 +163,7 @@
   margin: 1.4rem 0;
   padding: 1.2rem;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 12px;
   background: var(--surface);
 }
 
@@ -176,10 +178,11 @@
   display: inline-flex;
   align-items: center;
   padding: 0.35rem 0.7rem;
-  border: 1px solid rgba(var(--accent-rgb), 0.25);
-  border-radius: 2px;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  background: rgba(var(--accent-rgb), 0.08);
   color: var(--text);
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
   font-size: 0.72rem;
 }
 
@@ -190,7 +193,7 @@
 
 .attack-path-arrow {
   color: var(--accent-2);
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
 }
 
 .timeline {
@@ -217,7 +220,7 @@
 .timeline-date,
 .step-number {
   color: var(--accent-2);
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
   font-size: 0.68rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
