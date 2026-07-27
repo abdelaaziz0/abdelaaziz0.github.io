@@ -1,34 +1,6 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
-
-:root {
-  color-scheme: dark;
-  --bg: #15140f;
-  --bg-rgb: 21, 20, 15;
-  --surface: #1e1d17;
-  --border: #2e2d26;
-  --border-soft: rgba(242, 241, 234, 0.08);
-  --accent: #f97a3c;
-  --accent-rgb: 249, 122, 60;
-  --accent-2: #ff9257;
-  --accent-2-rgb: 255, 146, 87;
-  --text: #b8b5aa;
-  --text-strong: #f2f1ea;
-  --muted: #8f8c81;
-  --muted-soft: #6f6d63;
-  --code-bg: #11100c;
-  --code-text: #9ec8ff;
-  --code-string: #a5d886;
-  --green: #74d3a4;
-  --green-rgb: 116, 211, 164;
-  --red: #ff6b8a;
-  --red-rgb: 255, 107, 138;
-  --blue: #7fb4ff;
-  --blue-rgb: 127, 180, 255;
-  --yellow: #d8b85a;
-  --purple: #a394ff;
-  --purple-rgb: 163, 148, 255;
-  --diagram-bg: rgba(242, 241, 234, 0.05);
-}
+@import url("tokens.css");
+@import url("nav.css");
 
 *,
 *::before,
@@ -179,27 +151,6 @@ figcaption {
 .logo:hover,
 .nav-logo:hover {
   border-color: rgba(var(--accent-rgb), 0.45);
-}
-
-.nav-links {
-  display: flex;
-  align-items: center;
-  gap: 2rem;
-  list-style: none;
-  margin-left: auto;
-}
-
-.nav-links a {
-  color: var(--text);
-  font-size: 14px;
-  font-weight: 500;
-  letter-spacing: 0;
-  text-transform: none;
-}
-
-.nav-links a:hover,
-.nav-links a.active {
-  color: var(--text-strong);
 }
 
 .theme-toggle {

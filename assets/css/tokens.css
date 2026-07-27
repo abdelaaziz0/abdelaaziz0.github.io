@@ -1,0 +1,75 @@
+/* ============================================================
+   Design tokens — single source of truth for the whole site.
+   Both naming schemes below resolve to the same values so the
+   homepage (--primary/--ink/--sp-*) and the writeup/listing
+   stack (--accent/--text-strong/...) share one definition.
+   ============================================================ */
+:root {
+  color-scheme: dark;
+
+  /* ---- core palette ---- */
+  --canvas: #15140f;
+  --canvas-soft: #1b1a14;
+  --surface-card: #1e1d17;
+  --surface-strong: #2c2b23;
+  --hairline: #2e2d26;
+  --hairline-soft: #262520;
+  --hairline-strong: #45443b;
+  --ink: #f2f1ea;
+  --body: #b8b5aa;
+  --muted: #8f8c81;
+  --muted-soft: #6f6d63;
+  --primary: #f97a3c;
+  --primary-active: #ff9257;
+  --on-primary: #1b190f;
+
+  /* ---- aliases used by writeup.css / site.css ---- */
+  --bg: #15140f;
+  --bg-rgb: 21, 20, 15;
+  --surface: #1e1d17;
+  --border: #2e2d26;
+  --border-soft: rgba(242, 241, 234, 0.08);
+  --accent: #f97a3c;
+  --accent-rgb: 249, 122, 60;
+  --accent-2: #ff9257;
+  --accent-2-rgb: 255, 146, 87;
+  --text: #b8b5aa;
+  --text-strong: #f2f1ea;
+
+  /* ---- syntax / diagram accents (writeup pages) ---- */
+  --code-bg: #11100c;
+  --code-text: #9ec8ff;
+  --code-string: #a5d886;
+  --green: #74d3a4;
+  --green-rgb: 116, 211, 164;
+  --red: #ff6b8a;
+  --red-rgb: 255, 107, 138;
+  --blue: #7fb4ff;
+  --blue-rgb: 127, 180, 255;
+  --yellow: #d8b85a;
+  --purple: #a394ff;
+  --purple-rgb: 163, 148, 255;
+  --diagram-bg: rgba(242, 241, 234, 0.05);
+
+  /* ---- typography ---- */
+  --font-sans: "Inter", system-ui, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+
+  /* ---- spacing scale ---- */
+  --sp-xxs: 4px;
+  --sp-xs: 8px;
+  --sp-sm: 12px;
+  --sp-base: 16px;
+  --sp-md: 20px;
+  --sp-lg: 24px;
+  --sp-xl: 32px;
+  --sp-xxl: 48px;
+  --sp-section: 80px;
+
+  /* ---- radius scale ---- */
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-pill: 9999px;
+}
