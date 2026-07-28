@@ -71,24 +71,6 @@
           <span class="meta-badge tag">ACL</span>
           <span class="meta-badge tag">AD CS</span>
         </div>
-        <div class="challenge-stats">
-          <div class="stat-item">
-            <span class="stat-value">Offline</span>
-            <span class="stat-label">Mode d'analyse</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-value">v6</span>
-            <span class="stat-label">Schéma BloodHound</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-value">13</span>
-            <span class="stat-label">Collections JSON</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-value">ZIP/dir</span>
-            <span class="stat-label">Sortie</span>
-          </div>
-        </div>
       </section>
 
       <nav class="toc" aria-label="Table des matières">
@@ -100,7 +82,7 @@
           <li><a href="#problemes">Problèmes techniques</a></li>
           <li><a href="#validation">Validation</a></li>
           <li><a href="#limites">Limites</a></li>
-          <li><a href="#apports">Ce que cela démontre</a></li>
+          <li><a href="#apports">Ce que ça implique</a></li>
           <li><a href="#attribution">Attribution technique</a></li>
         </ol>
       </nav>
@@ -108,24 +90,17 @@
       <div class="article-content">
         <h2 id="objectif">1. Objectif</h2>
         <p>
-          Un dump <code>NTDS.dit</code> ne contient pas seulement des secrets ou des anciens hash. Il contient aussi la
-          structure profonde du domaine : groupes privilégiés, memberships, ACL, objets GPO, trusts, chemins de
-          délégation, certificats, templates AD CS et relations entre objets. Même lorsqu'un dump est ancien, cette
-          structure reste souvent utile car l'architecture Active Directory évolue généralement moins vite que les mots
-          de passe.
+          Un dump <code>NTDS.dit</code> contient plus que des hash : la structure du domaine y est aussi présente
+          (groupes privilégiés, memberships, ACL, objets GPO, trusts, chemins de délégation, certificats et templates
+          AD CS). Cette structure reste souvent utile même sur un dump ancien, l'architecture Active Directory évoluant
+          moins vite que les mots de passe.
         </p>
 
         <p>
-          <code>ntds2bh</code> exploite cette valeur structurelle. L'outil prend un <code>NTDS.dit</code> offline, le
-          parse, reconstruit les objets et relations utiles, puis génère une archive <code>bloodhound.zip</code>
-          directement importable dans BloodHound CE. L'objectif est de passer d'une base AD brute à un graphe
-          exploitable, sans dépendre d'une collecte LDAP live.
-        </p>
-
-        <p>
-          Le projet ne cherche pas à remplacer l'analyse humaine. Il automatise la reconstruction du graphe pour que
-          l'auditeur lise plus vite les chemins de privilèges, les relations dangereuses, les ACL sensibles, les
-          délégations Kerberos, les trusts et les éléments AD CS exposés.
+          <code>ntds2bh</code> prend un <code>NTDS.dit</code> offline, le parse, reconstruit les objets et relations,
+          puis génère une archive <code>bloodhound.zip</code> importable dans BloodHound CE. On passe d'une base AD
+          brute à un graphe exploitable sans collecte LDAP live, pour lire plus vite les chemins de privilèges, les ACL
+          sensibles, les délégations Kerberos, les trusts et les éléments AD CS exposés.
         </p>
 
         <h2 id="entrees-sorties">2. Entrées et sorties</h2>
@@ -385,26 +360,16 @@ tests/snapshots/*.json</code></pre>
           </li>
         </ul>
 
-        <h2 id="apports">7. Ce que cela démontre</h2>
+        <h2 id="apports">7. Ce que ça implique</h2>
         <p>
-          Ce projet démontre une compétence avancée en analyse Active Directory : lire une base NTDS offline,
-          reconstruire
-          les objets du domaine, convertir des security descriptors binaires en relations exploitables et produire un
-          artefact directement utilisable dans BloodHound CE.
+          Concrètement, le travail porte sur la lecture d'une base NTDS offline (tables ESE, schéma, DNT, distinguished
+          names, SIDs, memberships, primary groups, ACL et ACEs), la conversion des security descriptors binaires en
+          relations, et l'écriture des collections BloodHound CE.
         </p>
 
         <p>
-          Il montre aussi une compréhension concrète des structures internes AD : tables ESE, schéma, DNT, distinguished
-          names, SIDs, group memberships, primary groups, ACL, ACEs, trusts, délégation Kerberos et objets AD CS.
-          L'intérêt
-          n'est pas seulement de parser des données, mais de reconstruire les relations qui rendent l'analyse du
-          domaine lisible.
-        </p>
-
-        <p>
-          Pour un audit ou un lab, <code>ntds2bh</code> transforme un dump difficile à exploiter manuellement en graphe
-          lisible, navigable et partageable. C'est un pont entre l'analyse bas niveau d'un <code>NTDS.dit</code> et la
-          visualisation orientée chemins de privilèges de BloodHound.
+          Pour un audit ou un lab, ça transforme un dump difficile à exploiter à la main en graphe navigable et
+          partageable, sans toucher au domaine.
         </p>
 
         <h2 id="attribution">8. Attribution technique</h2>
