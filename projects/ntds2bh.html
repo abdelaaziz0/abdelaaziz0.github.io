@@ -4,33 +4,62 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ntds2bh - Présentation technique</title>
+  <title>ntds2bh — reconstruire un graphe BloodHound depuis NTDS.dit</title>
   <meta name="description"
-    content="Présentation technique de ntds2bh, outil Python qui convertit un NTDS.dit autorisé en collections BloodHound CE v6 sans collecte LDAP live.">
+    content="Article technique détaillé sur ntds2bh : parsing ESE, reconstruction des identités et relations Active Directory, ACL, GPO, délégations, AD CS, validation et génération BloodHound CE v6.">
   <link rel="canonical" href="https://abdelaaziz0.github.io/projects/ntds2bh.html">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="/assets/img/favicon-32.png" sizes="32x32" type="image/png">
   <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
-  <meta property="og:type" content="website">
+
+  <meta property="og:type" content="article">
   <meta property="og:url" content="https://abdelaaziz0.github.io/projects/ntds2bh.html">
-  <meta property="og:title" content="ntds2bh - Présentation technique">
+  <meta property="og:title" content="ntds2bh — reconstruire un graphe BloodHound depuis NTDS.dit">
   <meta property="og:description"
-    content="Présentation technique de ntds2bh, outil Python qui convertit un NTDS.dit autorisé en collections BloodHound CE v6 sans collecte LDAP live.">
+    content="Du fichier ESE au graphe BloodHound : identités, relations, ACL, cas limites, validation et résultats.">
   <meta property="og:image" content="https://abdelaaziz0.github.io/assets/img/og-card.jpg">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="Abdelaaziz Belkhair - Pentest Web et Active Directory">
+  <meta property="og:image:alt" content="ntds2bh — reconstruction offline d'un graphe Active Directory">
+
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="ntds2bh - Présentation technique">
+  <meta name="twitter:title" content="ntds2bh — reconstruire un graphe BloodHound depuis NTDS.dit">
   <meta name="twitter:description"
-    content="Présentation technique de ntds2bh, outil Python qui convertit un NTDS.dit autorisé en collections BloodHound CE v6 sans collecte LDAP live.">
+    content="Architecture, parsing NTDS, reconstruction des relations, validation et résultats de ntds2bh.">
   <meta name="twitter:image" content="https://abdelaaziz0.github.io/assets/img/og-card.jpg">
-  <meta name="twitter:image:alt" content="Abdelaaziz Belkhair - Pentest Web et Active Directory">
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
+  <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
     integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg=="
     crossorigin="anonymous" referrerpolicy="no-referrer">
   <link rel="stylesheet" href="../assets/css/writeup.css">
+
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'base',
+      securityLevel: 'loose',
+      themeVariables: {
+        fontFamily: 'Arial, sans-serif',
+        primaryColor: '#ffffff',
+        primaryTextColor: '#111111',
+        primaryBorderColor: '#1f2937',
+        lineColor: '#6b7280',
+        secondaryColor: '#f6f7f9',
+        tertiaryColor: '#ffffff'
+      },
+      flowchart: {
+        curve: 'linear',
+        htmlLabels: true,
+        nodeSpacing: 28,
+        rankSpacing: 42,
+        useMaxWidth: true
+      }
+    });
+  </script>
+
 </head>
 
 <body>
@@ -54,277 +83,901 @@
 
     <article>
       <section class="challenge-card">
-        <span class="challenge-platform"><i class="fas fa-diagram-project"></i> Projet Active Directory</span>
+        <span class="challenge-platform"><i class="fas fa-diagram-project"></i> Active Directory · BloodHound · Offline analysis</span>
         <h1 class="challenge-title">ntds2bh</h1>
         <p class="challenge-subtitle">
-          Outil Python d'analyse offline qui transforme un fichier <code>NTDS.dit</code> autorisé en collections
-          BloodHound CE v6. Il reconstruit les objets AD, relations, ACL, chemins de délégation, éléments AD CS et
-          trusts afin d'étudier la structure réelle d'un domaine sans requête LDAP live.
+          Transformer un snapshot <code>NTDS.dit</code> en graphe BloodHound CE exploitable sans interroger le domaine.
+          Le problème paraît être un problème de format. En pratique, c'est surtout un problème de reconstruction :
+          retrouver les identités, recoller les relations et traduire les permissions Windows sans inventer d'arêtes.
         </p>
         <div class="challenge-meta">
           <span class="meta-badge category">Python</span>
           <span class="meta-badge category">Active Directory</span>
-          <span class="meta-badge tag">BloodHound CE</span>
+          <span class="meta-badge tag">BloodHound CE v6</span>
           <span class="meta-badge tag">NTDS.dit</span>
           <span class="meta-badge tag">ESE</span>
-          <span class="meta-badge tag">Parsing offline</span>
-          <span class="meta-badge tag">ACL</span>
+          <span class="meta-badge tag">ACL / ACE</span>
+          <span class="meta-badge tag">GPO</span>
           <span class="meta-badge tag">AD CS</span>
+          <span class="meta-badge tag">gMSA / dMSA</span>
         </div>
       </section>
 
       <nav class="toc" aria-label="Table des matières">
         <div class="toc-title">Sommaire</div>
         <ol>
-          <li><a href="#objectif">Objectif</a></li>
-          <li><a href="#entrees-sorties">Entrées et sorties</a></li>
-          <li><a href="#architecture">Architecture</a></li>
-          <li><a href="#problemes">Problèmes techniques</a></li>
+          <li><a href="#tldr">TL;DR</a></li>
+          <li><a href="#probleme">Problème</a></li>
+          <li><a href="#positionnement">Positionnement</a></li>
+          <li><a href="#ese">Structure de NTDS.dit</a></li>
+          <li><a href="#identites">Identités</a></li>
+          <li><a href="#relations">Relations</a></li>
+          <li><a href="#acl">ACL et droits BloodHound</a></li>
+          <li><a href="#cas-particuliers">Cas particuliers</a></li>
+          <li><a href="#sortie">Sortie BloodHound CE v6</a></li>
           <li><a href="#validation">Validation</a></li>
+          <li><a href="#resultats">Résultats</a></li>
+          <li><a href="#performance">Performance</a></li>
           <li><a href="#limites">Limites</a></li>
-          <li><a href="#apports">Ce que ça implique</a></li>
+          <li><a href="#usage">Utilisation</a></li>
           <li><a href="#attribution">Attribution technique</a></li>
         </ol>
       </nav>
 
       <div class="article-content">
-        <h2 id="objectif">1. Objectif</h2>
+
+        <h2 id="tldr">TL;DR</h2>
+
         <p>
-          Un dump <code>NTDS.dit</code> contient plus que des hash : la structure du domaine y est aussi présente
-          (groupes privilégiés, memberships, ACL, objets GPO, trusts, chemins de délégation, certificats et templates
-          AD CS). Cette structure reste souvent utile même sur un dump ancien, l'architecture Active Directory évoluant
-          moins vite que les mots de passe.
+          Un <code>NTDS.dit</code> contient une grande partie de l'état statique d'Active Directory :
+          utilisateurs, groupes, machines, hiérarchie, appartenances, délégations, GPO, trusts,
+          descripteurs de sécurité et objets Active Directory Certificate Services (AD CS).
+          Le problème est que ces informations ne sont pas stockées sous la forme attendue par BloodHound.
         </p>
 
         <p>
-          <code>ntds2bh</code> prend un <code>NTDS.dit</code> offline, le parse, reconstruit les objets et relations,
-          puis génère une archive <code>bloodhound.zip</code> importable dans BloodHound CE. On passe d'une base AD
-          brute à un graphe exploitable sans collecte LDAP live, pour lire plus vite les chemins de privilèges, les ACL
-          sensibles, les délégations Kerberos, les trusts et les éléments AD CS exposés.
+          <code>ntds2bh</code> lit la base ESE, reconstruit le schéma et les identités, résout les relations,
+          interprète les ACL et génère les collections JSON BloodHound CE v6. Le traitement reste offline :
+          aucune requête LDAP n'est nécessaire pendant la conversion.
         </p>
 
-        <h2 id="entrees-sorties">2. Entrées et sorties</h2>
+        <p>
+          Sur l'instantané de campagne utilisé pour comparer le graphe statique au collecteur de référence,
+          SharpHound DCOnly et <code>ntds2bh</code> ont produit les mêmes <strong>487 nœuds</strong>
+          et <strong>3 797 relations</strong> sur le périmètre comparable.
+          Ce résultat ne veut pas dire que chaque propriété JSON est déjà identique :
+          un contrôle plus strict a ensuite fait ressortir plusieurs écarts de propriétés encore ouverts.
+        </p>
+
+        <p>
+          Le débit mesuré sur le laboratoire est d'environ <strong>1 330 objets par seconde</strong>.
+          Les estimations pour 10 000 et 100 000 objets données plus bas sont des extrapolations,
+          pas des benchmarks à grande échelle.
+        </p>
+
+
+        <h2 id="probleme">1. Problème</h2>
+
+        <p>
+          Quand on parle de <code>NTDS.dit</code> en pentest, la première association est souvent l'extraction
+          d'identifiants ou de secrets. Pourtant, la base contient aussi le paysage du domaine :
+          les objets, leurs attributs et une grande partie des relations qui expliquent qui appartient à quoi
+          et qui peut agir sur quoi.
+        </p>
+
+        <p>
+          C'est précisément ce que BloodHound rend lisible. Son intérêt ne vient pas d'une liste d'utilisateurs
+          ou d'ordinateurs, mais du graphe formé par les relations entre ces objets :
+          <code>MemberOf</code>, <code>AdminTo</code>, <code>GenericAll</code>, <code>WriteDacl</code>,
+          <code>AddMember</code>, <code>AllowedToAct</code>, <code>ReadGMSAPassword</code>, etc.
+        </p>
+
+        <p>
+          Tant qu'un accès live au domaine est possible, SharpHound reste l'outil naturel pour collecter ces informations.
+          Le cas qui m'intéressait était différent : le snapshot existe déjà, mais l'accès réseau au contrôleur de domaine
+          n'est plus disponible ou n'est plus souhaitable. Cela peut arriver après une exfiltration pendant une mission,
+          dans un environnement segmenté, ou lorsqu'on veut comparer des snapshots historiques sans toucher au domaine.
+        </p>
+
+        <p>
+          Dans ce cas, le fichier contient encore beaucoup d'informations utiles, mais il manque la couche qui transforme
+          ces données internes en objets et relations BloodHound. C'est cette couche que j'ai construite.
+        </p>
+
+
+        <h2 id="positionnement">2. Positionnement</h2>
+
+        <p>
+          Le projet se situe entre un parseur NTDS et un collecteur BloodHound. Ce positionnement est important,
+          parce qu'il évite de présenter l'outil comme un remplacement de solutions qui ne font pas la même chose.
+        </p>
+
         <div class="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>Élément</th>
-                <th>Description</th>
+                <th>Outil / couche</th>
+                <th>Ce qu'il fait bien</th>
+                <th>Ce qui manque pour ce cas d'usage</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td>Entrée principale</td>
-                <td>Fichier <code>NTDS.dit</code> obtenu dans un cadre autorisé, par exemple depuis un lab ou une copie
-                  offline issue d'un audit interne.</td>
+                <td><strong>SharpHound</strong></td>
+                <td>Collecte BloodHound directement depuis l'environnement.</td>
+                <td>Nécessite une collecte active et peut dépendre de la connectivité et des droits disponibles.</td>
               </tr>
               <tr>
-                <td>Traitement</td>
-                <td>Parsing ESE offline, reconstruction du schéma, résolution des DNs, normalisation des objets,
-                  parsing des security descriptors, mapping des ACL et reconstruction des relations BloodHound.</td>
+                <td><strong>ntdissector</strong></td>
+                <td>Lecture et normalisation bas niveau de <code>NTDS.dit</code>.</td>
+                <td>Ne reconstruit pas à lui seul le graphe BloodHound complet attendu ici.</td>
               </tr>
               <tr>
-                <td>Sortie</td>
-                <td>Archive <code>bloodhound.zip</code> ou dossier de collections JSON BloodHound CE v6 : users,
-                  computers, groups, domains, OUs, containers, GPOs, AD CS objects et relations associées.</td>
-              </tr>
-              <tr>
-                <td>Mode d'utilisation</td>
-                <td>Exécution locale/offline, sans requête LDAP live vers un contrôleur de domaine.</td>
+                <td><strong>ntds2bh</strong></td>
+                <td>Conserve le parsing NTDS utile et ajoute la reconstruction BloodHound.</td>
+                <td>Ne voit pas les données purement live absentes du snapshot.</td>
               </tr>
             </tbody>
           </table>
         </div>
 
         <p>
-          Utilisation minimale :
+          Une partie du parsing bas niveau de <code>ntds2bh</code> est donc adaptée de <code>ntdissector</code>.
+          Le travail propre au projet commence surtout au moment où les enregistrements NTDS doivent devenir
+          des identités stables, puis des relations BloodHound cohérentes.
+        </p>
+
+
+        <h2 id="ese">3. Structure de NTDS.dit</h2>
+
+        <p>
+          <code>NTDS.dit</code> utilise l'<strong>Extensible Storage Engine (ESE)</strong>, aussi connu historiquement
+          sous le nom JET Blue. ESE est un moteur de base de données intégré à Windows. Il organise les données en pages,
+          tables, index et enregistrements, avec sa propre représentation interne.
+        </p>
+
+        <p>
+          Lire la base n'est donc que la première étape. Une ligne de <code>datatable</code> n'arrive pas avec un joli
+          dictionnaire contenant <code>objectSid</code>, <code>memberOf</code> et <code>distinguishedName</code>.
+          Les noms d'attributs passent par le schéma, certains noms doivent être reconstruits, des relations sont déplacées
+          dans une table dédiée et les descripteurs de sécurité peuvent être référencés ailleurs.
+        </p>
+
+        <h3>Tables principales</h3>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Structure</th>
+                <th>Contenu utile</th>
+                <th>Pourquoi elle compte</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>datatable</code></td>
+                <td>Objets Active Directory et grande partie de leurs attributs.</td>
+                <td>Base de la reconstruction des utilisateurs, groupes, ordinateurs, OU, GPO, domaines et objets AD CS.</td>
+              </tr>
+              <tr>
+                <td><code>link_table</code></td>
+                <td>Relations liées entre objets.</td>
+                <td>Permet notamment de reconstruire des memberships sans se fier à un simple champ texte.</td>
+              </tr>
+              <tr>
+                <td><code>sd_table</code></td>
+                <td>Descripteurs de sécurité binaires.</td>
+                <td>Nécessaire pour retrouver les ACL et certains attributs qui pointent vers un descripteur par identifiant.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <figure>
+          <div class="mermaid">
+flowchart LR
+    A["NTDS.dit<br/><small>base ESE</small>"] --> B["ntds2bh"]
+    B --> C["BloodHound CE<br/><small>JSON v6 / ZIP</small>"]
+
+    B --> D["datatable<br/><small>objets + attributs</small>"]
+    B --> E["link_table<br/><small>relations liées</small>"]
+    B --> F["sd_table<br/><small>descripteurs de sécurité</small>"]
+
+    D --> G["Schéma et identités<br/><small>DN · SID · GUID · SPN</small>"]
+    E --> G
+    F --> H["ACL / ACE"]
+    G --> I["Objets et relations BloodHound"]
+    H --> I
+    I --> C
+          </div>
+          <figcaption>Le traitement croise plusieurs structures avant d'émettre le graphe.</figcaption>
+        </figure>
+
+        <h3>Schéma Active Directory</h3>
+
+        <p>
+          Les colonnes internes utilisent des identifiants d'attributs et des représentations qui n'ont pas toujours
+          de sens directement pour le reste du pipeline. La première phase construit donc une vue du schéma :
+          noms LDAP, classes d'objets, GUID de propriétés et informations utiles pour interpréter les ACE.
+        </p>
+
+        <p>
+          Cette dépendance est importante pour les ACL. Une ACE peut cibler un GUID de propriété ou un GUID de classe.
+          Tant que ces GUID ne sont pas associés à leur signification, on ne peut pas décider proprement
+          si une permission doit devenir <code>AddMember</code>, <code>WriteSPN</code>,
+          <code>WriteAccountRestrictions</code> ou simplement ne produire aucune arête spécifique.
+        </p>
+
+
+        <h2 id="identites">4. Identités</h2>
+
+        <p>
+          Le graphe devient inutilisable dès qu'un même objet reçoit deux identités différentes.
+          Avant de créer les relations, <code>ntds2bh</code> construit donc des index qui permettent de passer
+          d'une représentation interne à une représentation BloodHound stable.
+        </p>
+
+        <h3>DNT, parent et Distinguished Name</h3>
+
+        <p>
+          Le <strong>Distinguished Name (DN)</strong> n'est pas simplement stocké comme une chaîne complète dans chaque
+          enregistrement. La reconstruction s'appuie sur le <strong>Distinguished Name Tag (DNT)</strong>,
+          le DNT du parent, le Relative Distinguished Name (RDN) et le schéma.
+        </p>
+
+        <figure>
+          <div class="mermaid">
+flowchart LR
+    A["DNT 1042<br/>RDN = CN=Alice<br/>PDNT = 300"]
+    --> B["DNT 300<br/>RDN = OU=Users<br/>PDNT = 2"]
+    --> C["DNT 2<br/>RDN = DC=lab"]
+    --> D["CN=Alice,<br/>OU=Users,<br/>DC=lab,DC=local"]
+          </div>
+          <figcaption>Le DN complet est reconstruit en remontant la hiérarchie interne.</figcaption>
+        </figure>
+
+        <p>
+          Cette résolution est faite avant l'émission des relations. Sinon, une appartenance de groupe pourrait être
+          créée avec un identifiant temporaire, puis ne plus correspondre à l'objet final.
+        </p>
+
+        <h3>SID, GUID et types BloodHound</h3>
+
+        <p>
+          BloodHound n'utilise pas un seul type d'identifiant pour tous les objets. Les utilisateurs, groupes et ordinateurs
+          s'appuient largement sur les SID, alors que d'autres objets utilisent des GUID. Le pipeline maintient donc
+          plusieurs index : SID vers objet, DN vers objet, GUID vers objet, SPN vers compte et DNT vers enregistrement.
+        </p>
+
+        <p>
+          Le type de l'objet compte autant que son identifiant. Deux objets avec des attributs proches ne doivent pas
+          nécessairement être envoyés dans la même collection. Le routage regarde la classe Active Directory et,
+          lorsque c'est nécessaire, <code>sAMAccountType</code>.
+        </p>
+
+        <p>
+          Les comptes de service sont un bon exemple. Un <strong>Group Managed Service Account (gMSA)</strong>
+          est représenté comme un utilisateur dans le modèle ciblé, alors qu'un
+          <strong>Delegated Managed Service Account (dMSA)</strong> suit le chemin des ordinateurs.
+          Utiliser seulement <code>sAMAccountType</code> ou un test trop générique crée rapidement des erreurs de typage.
+        </p>
+
+
+        <h2 id="relations">5. Relations</h2>
+
+        <p>
+          Une fois les identités stabilisées, le pipeline peut commencer à recoller les objets.
+          C'est cette phase qui transforme une collection d'enregistrements en graphe.
+        </p>
+
+        <h3>Appartenances aux groupes</h3>
+
+        <p>
+          Les memberships sont reconstruits depuis <code>link_table</code>. Une entrée fournit des références internes,
+          pas directement un <code>PrincipalSID</code> BloodHound. Le traitement doit :
+        </p>
+
+        <ol>
+          <li>retrouver le membre et le groupe à partir de leurs références ;</li>
+          <li>résoudre leur SID ou identifiant final ;</li>
+          <li>déterminer le type BloodHound du membre ;</li>
+          <li>vérifier que le lien est encore actif ;</li>
+          <li>émettre la relation une seule fois.</li>
+        </ol>
+
+        <p>
+          La vérification de l'état du lien a été ajoutée après un bug concret.
+          Une relation supprimée dans Active Directory peut rester physiquement présente dans <code>link_table</code>.
+          Si <code>link_deltime</code> ou <code>link_deactivetime</code> est ignoré, une ancienne appartenance
+          revient dans le graphe alors qu'elle n'existe plus logiquement.
+        </p>
+
+        <figure>
+          <div class="mermaid">
+flowchart LR
+    A["Lien supprimé<br/>dans Active Directory"]
+    --> B["Entrée encore présente<br/>dans link_table"]
+    --> C["Ancienne version<br/>fausse appartenance"]
+    --> D["Filtre<br/>link_deltime / link_deactivetime"]
+    --> E["Test de régression"]
+          </div>
+          <figcaption>Un lien supprimé peut rester physiquement présent dans <code>link_table</code>.</figcaption>
+        </figure>
+
+        <h3>Primary group</h3>
+
+        <p>
+          Le groupe primaire suit une autre logique. L'information se trouve sur l'utilisateur ou l'ordinateur via
+          <code>primaryGroupID</code>. Le pipeline reconstruit le <code>PrimaryGroupSID</code> à partir du SID du domaine
+          et de ce RID.
+        </p>
+
+        <p>
+          Ce groupe ne doit pas être réinjecté une seconde fois dans la liste classique des membres du groupe.
+          Sinon le graphe contient deux représentations de la même appartenance.
+        </p>
+
+        <h3>Hiérarchie</h3>
+
+        <p>
+          Les relations <code>ContainedBy</code> viennent de la hiérarchie des DN.
+          Après reconstruction du DN complet, le parent peut être retrouvé et typé : OU, container, domaine, etc.
+          Là encore, la relation n'est fiable que si la résolution d'identité est déjà terminée.
+        </p>
+
+
+        <h2 id="acl">6. ACL et droits BloodHound</h2>
+
+        <p>
+          C'est la partie du projet où une erreur a le plus d'impact.
+          Une propriété mal sérialisée gêne l'affichage. Une ACE mal interprétée peut inventer un chemin d'attaque.
+        </p>
+
+        <h3>Descripteurs de sécurité</h3>
+
+        <p>
+          Un objet NTDS ne contient pas toujours directement le blob complet de son descripteur de sécurité.
+          Le traitement peut passer par une référence vers <code>sd_table</code>.
+        </p>
+
+        <figure>
+          <div class="mermaid">
+flowchart LR
+    A["Objet NTDS"]
+    --> B["nTSecurityDescriptor"]
+    --> C["sd_id"]
+    --> D["sd_table"]
+    --> E["Descripteur binaire"]
+    --> F["Owner · DACL · ACE"]
+          </div>
+          <figcaption>Résolution d'un descripteur de sécurité référencé depuis un objet NTDS.</figcaption>
+        </figure>
+
+        <p>
+          Le parser lit l'en-tête du security descriptor, retrouve l'owner, le group SID,
+          la DACL et les ACE. Le résultat n'est pas encore du BloodHound :
+          il faut ensuite interpréter chaque ACE.
+        </p>
+
+        <h3>Interprétation des ACE</h3>
+
+        <p>
+          Pour décider qu'une ACE produit une arête, le résolveur regarde plusieurs dimensions en même temps :
+        </p>
+
+        <ul>
+          <li>le type d'ACE ;</li>
+          <li>ALLOW ou DENY ;</li>
+          <li>le masque de droits ;</li>
+          <li>le GUID d'objet ou de propriété ciblé ;</li>
+          <li>le SID du principal ;</li>
+          <li>le type de l'objet cible ;</li>
+          <li>les flags d'héritage.</li>
+        </ul>
+
+        <h3>Exemple : AddMember</h3>
+
+        <p>
+          Un cas simple est <code>AddMember</code>. Une ACE qui autorise <code>WRITE_PROPERTY</code>
+          sur l'attribut <code>member</code> d'un groupe permet de modifier la liste des membres.
+          BloodHound représente cette capacité par une arête <code>AddMember</code>.
+        </p>
+
+        <figure>
+          <div class="mermaid">
+flowchart LR
+    A["ACE sur SQL Admins<br/><small>WRITE_PROPERTY · member</small>"]
+    --> B["Résolution du droit"]
+    --> C["IT"]
+    C -- AddMember --> D["SQL Admins"]
+          </div>
+          <figcaption>Une écriture sur l'attribut <code>member</code> du groupe devient une relation <code>AddMember</code>.</figcaption>
+        </figure>
+
+        <p>
+          Le masque <code>WRITE_PROPERTY</code> seul ne suffit pas. S'il cible une autre propriété,
+          <code>AddMember</code> ne doit pas être créé.
+          Une ACE de refus ne devient pas une autorisation, et une ACE <code>INHERIT_ONLY</code>
+          ne doit pas être appliquée comme droit direct sur l'objet courant.
+        </p>
+
+        <h3>SELF et OWNER RIGHTS</h3>
+
+        <p>
+          Certains SID connus de Windows ont une sémantique particulière.
+          <code>SELF</code>, par exemple, ne doit pas être réécrit naïvement en SID de l'objet cible :
+          cela change la signification de l'ACE.
+        </p>
+
+        <p>
+          <code>OWNER RIGHTS</code> demande aussi un traitement séparé, notamment pour déterminer comment la propriété
+          liée au propriétaire doit être représentée. Ce type de cas est exactement la raison pour laquelle une simple
+          table « masque → nom BloodHound » ne suffit pas.
+        </p>
+
+        <h3>Mode strict</h3>
+
+        <p>
+          Un autre problème est le comportement en cas de descripteur tronqué ou invalide.
+          Le pire résultat serait de transformer silencieusement un descripteur impossible à parser en liste d'ACL vide.
+          Le mode strict permet donc de rendre ces erreurs bloquantes au lieu de produire une fausse absence de droits.
+        </p>
+
+
+        <h2 id="cas-particuliers">7. Cas particuliers</h2>
+
+        <h3>GPO</h3>
+
+        <p>
+          Les liens de stratégie de groupe sont stockés dans <code>gPLink</code>.
+          Le GUID présent dans cette chaîne permet d'identifier le <code>groupPolicyContainer</code>,
+          mais il faut ensuite retrouver l'<code>objectGUID</code> réel utilisé comme identifiant du nœud GPO.
+        </p>
+
+        <p>
+          Les options du lien sont également interprétées. Un lien désactivé ne doit pas apparaître comme actif,
+          et le bit d'enforcement doit être converti vers <code>IsEnforced</code>.
+        </p>
+
+        <h3>Délégation contrainte</h3>
+
+        <p>
+          <code>msDS-AllowedToDelegateTo</code> contient des Service Principal Names (SPN), pas directement le SID
+          du compte cible. Le pipeline construit donc un index SPN → objet, avec un fallback sur les noms de comptes
+          lorsque c'est nécessaire.
+        </p>
+
+        <h3>RBCD</h3>
+
+        <p>
+          La Resource-Based Constrained Delegation (RBCD) utilise un descripteur de sécurité.
+          Les principaux autorisés deviennent des entrées <code>AllowedToAct</code>.
+          Il faut distinguer cette relation du droit <code>AddAllowedToAct</code>, qui représente la capacité
+          à modifier la configuration RBCD elle-même.
+        </p>
+
+        <h3>gMSA</h3>
+
+        <p>
+          Le cas gMSA a révélé un détail utile sur la représentation NTDS.
+          Dans le laboratoire, <code>msDS-GroupMSAMembership</code> contenait une valeur de huit octets correspondant
+          à un <code>sd_id</code>, et non au security descriptor complet.
+        </p>
+
+        <p>
+          La première implémentation traitait cette valeur comme un blob et ne produisait aucun
+          <code>ReadGMSAPassword</code>. La correction consiste à reconnaître la référence, la résoudre dans
+          <code>sd_table</code>, parser le descripteur puis exécuter le même moteur de résolution d'ACE.
+        </p>
+
+        <h3>dMSA</h3>
+
+        <p>
+          Les dMSA ressemblent suffisamment aux autres comptes de service pour rendre un routage trop générique dangereux.
+          Dans le modèle visé, ils suivent le chemin des ordinateurs. La classe de l'objet est donc utilisée explicitement
+          pour ne pas les classer comme gMSA ou utilisateurs classiques.
+        </p>
+
+        <h3>AD CS</h3>
+
+        <p>
+          Les objets Active Directory Certificate Services vivent en grande partie dans la partition de configuration.
+          Le convertisseur prend en charge plusieurs familles :
+          templates, Enterprise CAs, Root CAs, AIA CAs, NTAuth stores et issuance policies.
+        </p>
+
+        <p>
+          Pour les templates, il faut convertir des flags, des périodes, des usages de clé et différentes politiques.
+          Pour les autorités, les certificats stockés dans l'annuaire peuvent être décodés pour récupérer
+          des informations comme le sujet, le numéro de série ou l'empreinte.
+        </p>
+
+        <p>
+          Les ACL des objets AD CS peuvent aussi produire des droits comme <code>ManageCA</code>
+          et <code>ManageCertificates</code>.
+          En revanche, les paramètres qui existent uniquement dans le registre du serveur d'autorité
+          ne peuvent pas être reconstruits depuis <code>NTDS.dit</code> seul.
+        </p>
+
+        <h3>Trusts</h3>
+
+        <p>
+          Les relations de confiance viennent des objets <code>trustedDomain</code>.
+          Le traitement récupère les informations présentes dans la base et les rattache au domaine concerné.
+          Les trusts sont ensuite sérialisés dans le format attendu par BloodHound.
+        </p>
+
+
+        <h2 id="sortie">8. Sortie BloodHound CE v6</h2>
+
+        <p>
+          Une fois les objets et relations reconstruits, il reste à produire une sortie que BloodHound CE accepte directement.
+          Chaque collection suit l'enveloppe JSON version 6 avec un tableau <code>data</code> et un bloc <code>meta</code>.
+        </p>
+
+        <pre><code>{
+  "data": [
+    {
+      "...": "objet BloodHound"
+    }
+  ],
+  "meta": {
+    "type": "users",
+    "count": 1,
+    "version": 6
+  }
+}</code></pre>
+
+        <p>
+          Le projet génère treize familles de collections :
+        </p>
+
+        <pre><code>users
+computers
+groups
+domains
+ous
+containers
+gpos
+certtemplates
+enterprisecas
+rootcas
+aiacas
+ntauthstores
+issuancepolicies</code></pre>
+
+        <p>
+          La sortie peut être écrite comme dossier de JSON ou regroupée dans <code>bloodhound.zip</code>.
+          Le writer vérifie aussi que le <code>meta.count</code> correspond au nombre réel d'objets écrits.
+        </p>
+
+
+        <h2 id="validation">9. Validation</h2>
+
+        <p>
+          La validation a pris autant de temps que certaines parties du développement.
+          Une comparaison brute avec SharpHound n'était pas suffisante : si les deux sorties divergent,
+          il faut encore savoir laquelle correspond à l'état réellement stocké.
+        </p>
+
+        <h3>Laboratoire contrôlé</h3>
+
+        <p>
+          J'ai construit les environnements de test avec ADBuilder.
+          Cela permet de créer volontairement un groupe, un droit, une délégation ou une relation,
+          puis de savoir avant l'exécution ce qui doit apparaître.
+        </p>
+
+        <p>
+          Cette différence est importante. Sur un domaine que je ne contrôle pas, une absence d'arête peut venir
+          du convertisseur, du collecteur de référence, des permissions du compte de collecte ou simplement
+          d'une mauvaise hypothèse sur la configuration.
+          Dans un lab construit pour le test, je peux revenir à l'ACL source et trancher.
+        </p>
+
+        <h3>Sources de preuve</h3>
+
+        <ol>
+          <li><strong>Configuration connue</strong> : ce qui a été créé volontairement dans le lab.</li>
+          <li><strong>Donnée stockée</strong> : lecture LDAP, PowerShell ou inspection de NTDS.</li>
+          <li><strong>Collecte de référence</strong> : sortie SharpHound sur le même état.</li>
+        </ol>
+
+        <figure>
+          <div class="mermaid">
+flowchart LR
+    A["1. ADBuilder<br/><small>cas connu</small>"]
+    --> B["2. Même état<br/><small>NTDS + SharpHound</small>"]
+    --> C["3. Comparer<br/><small>objets · propriétés · relations</small>"]
+    --> D["4. Vérifier<br/><small>LDAP · PowerShell · NTDS</small>"]
+    --> E["5. Rejouer<br/><small>test de régression</small>"]
+    E -. correction .-> A
+          </div>
+          <figcaption>Un écart est vérifié à la source, corrigé, puis rejoué.</figcaption>
+        </figure>
+
+        <h3>Faux positifs et faux négatifs</h3>
+
+        <p>
+          Les termes faux positif et faux négatif ont du sens uniquement si l'état attendu est connu.
+          Je les réserve donc aux cas contrôlés du lab.
+        </p>
+
+        <p>
+          Pour la comparaison globale avec SharpHound, je parle plutôt de :
+          <strong>match exact</strong>, <strong>présent seulement dans la référence</strong>
+          ou <strong>présent seulement dans le candidat</strong>.
+          Cela évite de transformer SharpHound en oracle absolu.
+        </p>
+
+        <h3>Contrôle d'intégrité</h3>
+
+        <p>
+          Le contrôle d'intégrité ne se contente pas du nombre d'objets.
+          Il vérifie les identifiants, les types, les propriétés comparables, les relations et plusieurs invariants de format.
+        </p>
+
+        <ul>
+          <li>collections manquantes ou supplémentaires ;</li>
+          <li><code>meta.count</code> incohérent avec <code>len(data)</code> ;</li>
+          <li>propriété manquante, supplémentaire ou différente ;</li>
+          <li>relations comparées comme tuples exacts ;</li>
+          <li>trusts comparés comme structures complètes ;</li>
+          <li>doublons d'identifiants ;</li>
+          <li>références orphelines.</li>
+        </ul>
+
+        <p>
+          Ce durcissement a été utile parce qu'il a fait apparaître des écarts que la comparaison plus ancienne
+          ne voyait pas, notamment des propriétés présentes dans la référence mais pas encore émises par le convertisseur.
+        </p>
+
+
+        <h2 id="resultats">10. Résultats</h2>
+
+        <h3>Parsing</h3>
+
+        <p>
+          Sur le laboratoire utilisé pour comparer directement les données de l'annuaire et le parsing NTDS,
+          <strong>2 026 objets</strong> ont été comparés sur les principales familles d'attributs.
+          L'objectif n'était pas de compter les lignes lues, mais de vérifier que les valeurs importantes
+          survivent correctement au passage LDAP → représentation interne → objet normalisé.
+        </p>
+
+        <h3>Cas contrôlés</h3>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Famille</th>
+                <th>Résultat</th>
+                <th>Ce que ça teste</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Droits ACL</td>
+                <td><strong>23 / 23</strong></td>
+                <td>Arêtes positives attendues sur des cas construits.</td>
+              </tr>
+              <tr>
+                <td>Contrôles négatifs</td>
+                <td><strong>16 / 16</strong></td>
+                <td>Absence d'arêtes qui ne doivent pas être produites.</td>
+              </tr>
+              <tr>
+                <td>Héritage</td>
+                <td><strong>11 / 11</strong></td>
+                <td>Propagation et application des ACE selon leurs flags.</td>
+              </tr>
+              <tr>
+                <td>Scénarios de modification</td>
+                <td><strong>7 / 7</strong></td>
+                <td>Modification d'un état, nouveau snapshot, nouvelle comparaison.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Comparaison avec SharpHound</h3>
+
+        <p>
+          Sur un instantané de campagne et sur le périmètre statique comparable à SharpHound DCOnly :
+        </p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th></th>
+                <th>SharpHound</th>
+                <th>ntds2bh</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Nœuds</td>
+                <td><strong>487</strong></td>
+                <td><strong>487</strong></td>
+              </tr>
+              <tr>
+                <td>Relations</td>
+                <td><strong>3 797</strong></td>
+                <td><strong>3 797</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>
+          Les identifiants et types de nœuds étaient alignés et aucune référence orpheline n'était présente
+          dans cette comparaison.
+        </p>
+
+        <p>
+          Il faut toutefois distinguer <strong>égalité du graphe comparable</strong> et
+          <strong>égalité complète de toutes les propriétés</strong>.
+          Après durcissement du checker, plusieurs différences de propriétés ont été rendues visibles au lieu d'être ignorées.
+        </p>
+
+        <h3>Écarts restants</h3>
+
+        <p>
+          Les différences restantes ne sont pas toutes de même nature.
+          Certaines sont des problèmes de sérialisation simples, d'autres demandent de reproduire une sémantique
+          particulière de SharpHound.
+        </p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Écart</th>
+                <th>Nature</th>
+                <th>État</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>objectguid</code> absent sur certaines sorties</td>
+                <td>Propriété déjà lisible, mais pas émise partout.</td>
+                <td>Écart de sortie.</td>
+              </tr>
+              <tr>
+                <td><code>isaclprotected</code></td>
+                <td>Dérivable du security descriptor.</td>
+                <td>À harmoniser dans la sérialisation.</td>
+              </tr>
+              <tr>
+                <td><code>adminsdholderprotected</code></td>
+                <td>Sémantique plus complexe.</td>
+                <td>Ne doit pas être remplacé naïvement par <code>adminCount</code>.</td>
+              </tr>
+              <tr>
+                <td>flags liés à <code>OWNER RIGHTS</code></td>
+                <td>Sémantique de propriété dérivée.</td>
+                <td>Encore à aligner complètement.</td>
+              </tr>
+              <tr>
+                <td><code>DomainSID</code> sur certains objets AD CS</td>
+                <td>Différence de modèle / sérialisation.</td>
+                <td>Visible dans le checker.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>
+          Je préfère laisser ces écarts visibles. Un « 0 différence » obtenu en excluant toutes les propriétés gênantes
+          serait moins utile qu'un checker qui montre clairement ce qui reste à corriger.
+        </p>
+
+        <h3>Écarts avec SharpHound</h3>
+
+        <p>
+          La campagne a aussi mis en évidence des cas où une ACE était réellement présente dans Active Directory
+          mais où la collecte de référence ne produisait pas l'arête correspondante.
+          Deux exemples rencontrés pendant la validation concernaient
+          <code>WriteAccountRestrictions</code> sur un utilisateur et <code>AutoEnroll</code> sur un template.
+        </p>
+
+        <p>
+          Ce type de cas justifie la méthode à trois sources :
+          regarder uniquement le ZIP de référence aurait conduit à traiter comme erreur une donnée réellement présente.
+        </p>
+
+
+        <h2 id="performance">11. Performance</h2>
+
+        <p>
+          Le débit mesuré sur le laboratoire est d'environ <strong>1 330 objets/s</strong>.
+          C'est un ordre de grandeur utile pour juger le coût de la conversion actuelle, mais ce n'est pas encore
+          une étude de montée en charge complète.
+        </p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Taille</th>
+                <th>Temps au débit de 1 330 objets/s</th>
+                <th>Statut</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>10 000 objets</td>
+                <td>≈ <strong>7,5 s</strong></td>
+                <td>Extrapolation linéaire</td>
+              </tr>
+              <tr>
+                <td>100 000 objets</td>
+                <td>≈ <strong>75 s</strong> (1 min 15 s)</td>
+                <td>Extrapolation linéaire</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>
+          Ces estimations supposent que le débit reste stable. Ce n'est pas garanti.
+          Le coût réel dépend aussi du nombre de liens, du nombre de security descriptors uniques,
+          de la densité des ACL, des objets AD CS et de la structure du domaine.
+          Un benchmark sérieux à grande échelle devra donc mesurer au minimum la durée totale,
+          la mémoire maximale, le nombre d'objets et le nombre de relations.
+        </p>
+
+
+        <h2 id="limites">12. Limites</h2>
+
+        <p>
+          La limite principale vient du snapshot lui-même. <code>NTDS.dit</code> donne une vue riche de l'annuaire,
+          mais pas de tout l'environnement Windows.
+        </p>
+
+        <ul>
+          <li><strong>Sessions actives :</strong> elles dépendent de l'état live des machines.</li>
+          <li><strong>Groupes locaux :</strong> ils ne sont pas décrits uniquement par la base NTDS.</li>
+          <li><strong>État des services et des postes :</strong> absent du snapshot d'annuaire.</li>
+          <li><strong>Registre :</strong> certains paramètres, notamment côté AD CS, vivent ailleurs.</li>
+          <li><strong>SYSVOL :</strong> le contenu des fichiers de stratégie n'est pas contenu dans NTDS.dit.</li>
+          <li><strong>Temps :</strong> le graphe représente l'état du domaine au moment de la copie.</li>
+        </ul>
+
+        <p>
+          Cela change aussi la façon d'interpréter le graphe.
+          Une relation reconstruite depuis un ancien snapshot peut être historiquement correcte mais ne plus l'être aujourd'hui.
+          <code>ntds2bh</code> fournit donc une reconstruction du graphe statique observable dans la copie ;
+          il ne prouve pas qu'un chemin est encore exploitable dans l'environnement actuel.
+        </p>
+
+
+        <h2 id="usage">13. Utilisation</h2>
+
+        <p>
+          L'article n'a pas vocation à remplacer la documentation, mais le chemin minimal tient en quelques commandes :
         </p>
 
         <pre><code>uv venv
 source .venv/bin/activate
 uv sync
-uv run ntds2bh -n ntds.dit</code></pre>
+
+uv run ntds2bh -n ntds.dit -o bloodhound.zip</code></pre>
 
         <p>
-          La sortie est générée par défaut dans <code>./bloodhound.zip</code>. Il est possible de choisir un chemin de
-          sortie explicite, de demander un dossier de JSON avec <code>--no-zip</code>, ou d'ajuster la verbosité avec
-          <code>-v</code> et <code>-q</code>.
+          Pour écrire les collections séparément :
         </p>
 
-        <pre><code>uv run ntds2bh -n ntds.dit -o Bloodhound_output.zip
-uv run ntds2bh -n ntds.dit --no-zip -o Bloodhound_output
-uv run ntds2bh -n ntds.dit -v</code></pre>
-
-        <details>
-          <summary>Voir un exemple de sortie CLI complète</summary>
-          <pre><code>uv run ntds2bh -n ntds.dit
-
-          __      __    ___   __    __  
-   ____  / /_____/ /___|__ \ / /_  / /_ 
-  / __ \/ __/ __  / ___/_/ // __ \/ __ \
- / / / / /_/ /_/ (__  ) __// /_/ / / / /
-/_/ /_/\__/\__,_/____/____/_.___/_/ /_/
-
-Opening NTDS database: test/ntds-lab.dit
-Building schemas from datatable...
-Parsing sd_table...
-Parsing link_table...
-Parsing datatable for schema resolution...
-Building distinguished names...
-Processing 1779 unresolved DNs...
-Schema build complete. Seen 3898 records.
-NTDS initialized. Schema resolved 1317 attributes, 270 object classes.
-Found domain: NTDS2BH.LAB (SID: S-1-5-21-719806804-2045287352-1372248481)
-Mapping objects: 100%|████████████████████████████████████████| 3898/3898 [00:01&lt;00:00, 2492.50obj/s]
-Found 54 users
-Found 14 computers
-Found 82 groups
-Found 4 gpos
-Found 1 domains
-Found 332 containers
-Found 17 ous
-Found 37 certtemplates
-Found 1 enterprisecas
-Found 1 rootcas
-Found 1 aiacas
-Found 1 ntauthstores
-Found 13 issuancepolicies
-Output: ./bloodhound.zip</code></pre>
-        </details>
-
-        <h2 id="architecture">3. Architecture</h2>
-        <p>
-          <code>NTDS.dit</code> est une base ESE/JET Blue. Elle n'est pas structurée comme un export LDAP simple. Les
-          objets, attributs, relations et security descriptors sont répartis dans plusieurs tables internes. Les
-          attributs
-          utilisent des colonnes <code>ATT*</code>, les noms distingués doivent être reconstruits à partir de
-          <code>DNT_col</code>, <code>PDNT_col</code>, <code>RDN</code> et <code>RDNtyp_col</code>, et les ACL sont
-          stockées sous forme de security descriptors binaires.
-        </p>
+        <pre><code>uv run ntds2bh -n ntds.dit --no-zip -o BloodHound_output</code></pre>
 
         <p>
-          L'outil reconstruit progressivement une vue exploitable du domaine. Les tables les plus importantes sont :
-        </p>
-
-        <ul>
-          <li><code>datatable</code> : objets AD et majorité des attributs.</li>
-          <li><code>link_table</code> : relations liées, dont memberships et backlinks.</li>
-          <li><code>sd_table</code> : security descriptors binaires référencés par les objets.</li>
-        </ul>
-
-        <pre><code>NTDS.dit
-    -&gt; ouverture ESE
-    -&gt; lecture datatable / link_table / sd_table
-    -&gt; build_indexes() : schéma, SIDs, primary groups, DCs, GUIDs
-    -&gt; reconstruction du schéma et des DNs
-    -&gt; normalisation des objets
-    -&gt; routage des objets et filtrage des objets supprimés
-    -&gt; résolution des SIDs, ACL, memberships, trusts, AD CS et délégations
-    -&gt; mapping vers les modèles BloodHound CE
-    -&gt; génération de bloodhound.zip ou dossier JSON</code></pre>
-
-        <p>
-          Les deux premières étapes reposent sur une base de parsing héritée de <code>ntdissector</code>. La couche
-          propre à <code>ntds2bh</code> intervient ensuite pour indexer les SIDs et GUIDs utiles, typer les objets,
-          reconstruire les relations, puis écrire les collections BloodHound CE.
+          Le résultat peut ensuite être importé dans BloodHound CE comme une collecte classique.
         </p>
 
         <details>
-          <summary>Voir le schéma Mermaid du pipeline global</summary>
-          <pre><code>flowchart LR
-    ntds[("NTDS.dit")]:::input
-    parse["ESE parse&lt;br/&gt;schema + DN rebuild&lt;br/&gt;record normalization"]:::process
-    cache["caches&lt;br/&gt;SIDs, DNs, links&lt;br/&gt;security descriptors"]:::cache
-    route{"route by class&lt;br/&gt;or sAMAccountType"}:::decision
-    map["map to BloodHound&lt;br/&gt;users, computers, groups&lt;br/&gt;OUs, GPOs, ADCS, trusts&lt;br/&gt;ACLs -&gt; edges"]:::process
-    zip[["bloodhound.zip"]]:::output
-
-    ntds --&gt; parse
-    parse --&gt; cache
-    cache --&gt; route
-    route --&gt; map
-    map --&gt; zip</code></pre>
-        </details>
-
-        <h2 id="problemes">4. Problèmes techniques</h2>
-
-        <h3>Security descriptors et ACL</h3>
-        <p>
-          Les objets AD ne contiennent pas directement une ACL prête à consommer. Ils portent une référence vers un
-          security descriptor stocké dans <code>sd_table</code>. Pour produire des relations BloodHound, l'outil doit
-          récupérer le blob binaire, parser l'en-tête, extraire le owner SID, le group SID, la DACL, les ACEs, puis
-          traduire les droits Windows en relations compréhensibles par BloodHound.
-        </p>
-
-        <p>
-          Cette étape est centrale : BloodHound n'a pas besoin d'une ACL brute, mais d'arêtes comme <code>Owns</code>,
-          <code>GenericAll</code>, <code>GenericWrite</code>, <code>WriteDacl</code>, <code>WriteOwner</code>,
-          <code>AddMember</code> ou des droits liés à DCSync et AD CS. <code>ntds2bh</code> effectue cette conversion en
-          tenant compte des masques d'accès, GUIDs d'objet, ACEs héritées, ACEs refusées, SID spéciaux et types
-          d'objets.
-        </p>
-
-        <details>
-          <summary>Voir le pipeline de résolution des security descriptors</summary>
-          <pre><code>record.nTSecurityDescriptor
-    -&gt; sd_id reference
-    -&gt; sd_table.sd_value
-    -&gt; parse_ntSecurityDescriptor()
-    -&gt; owner SID / group SID / DACL / SACL
-    -&gt; parse_aces()
-    -&gt; resolve_aces()
-    -&gt; BloodHound Aces[]
-       - PrincipalSID
-       - PrincipalType
-       - RightName
-       - IsInherited</code></pre>
-        </details>
-
-        <h3>Relations AD non triviales</h3>
-        <p>
-          Les relations Active Directory ne sont pas toutes stockées comme des attributs directs. Les memberships de
-          groupe résident dans <code>link_table</code>. Le <code>primaryGroupID</code> d'un utilisateur ou d'un
-          ordinateur
-          doit être résolu séparément puis réinjecté dans la liste des memberships. Les délégations Kerberos passent
-          par des SPNs qu'il faut faire correspondre à des comptes réels. Les well-known SIDs doivent être normalisés
-          pour
-          être acceptés par BloodHound. Les trusts sont stockés dans des objets <code>trustedDomain</code> et doivent
-          être
-          rattachés au bon domaine.
-        </p>
-
-        <p>
-          Cette reconstruction est ce qui donne sa valeur au projet : sans ces étapes, l'import BloodHound produirait
-          des
-          nœuds isolés ou des relations incomplètes. Avec cette logique, le dump offline redevient un graphe analysable.
-        </p>
-
-        <h2 id="validation">5. Validation</h2>
-        <p>
-          Les sorties sont validées sur des environnements de lab contrôlés avant import dans BloodHound CE. Les
-          contrôles portent sur la présence des objets attendus, la cohérence des SIDs, la résolution des distinguished
-          names, les memberships, les trusts, les relations de délégation, les ACL dérivées et les objets AD CS.
-          Le projet contient aussi des tests unitaires et des snapshots pour verrouiller les formes BloodHound générées.
-        </p>
-
-        <p>
-          L'objectif de validation est simple : un objet présent dans <code>NTDS.dit</code> doit être routé vers la
-          bonne
-          collection BloodHound, et une relation présente dans la base doit produire l'arête correspondante dans le
-          graphe. Les doublons, relations orphelines, SIDs non résolus, objets supprimés et mappings ambigus sont
-          traités pendant la normalisation.
-        </p>
-
-        <pre><code>python -m pytest
-
-tests/test_sddl.py
-tests/test_orchestrator.py
-tests/test_snapshot.py
-tests/test_utils_formatters.py
-tests/snapshots/*.json</code></pre>
-
-        <details>
-          <summary>Voir les collections BloodHound CE générées</summary>
+          <summary>Voir les collections générées</summary>
           <pre><code>bloodhound.zip
 ├── users.json
 ├── computers.json
@@ -341,123 +994,77 @@ tests/snapshots/*.json</code></pre>
 └── issuancepolicies.json</code></pre>
         </details>
 
-        <h2 id="limites">6. Limites</h2>
+
+        <h2 id="attribution">14. Attribution technique</h2>
+
+        <p>
+          Le projet ne repart pas de zéro pour la lecture de la base.
+          Une partie du parsing ESE et de la normalisation NTDS est adaptée de <code>ntdissector</code>,
+          qui s'appuie sur <code>dissect-database</code>.
+        </p>
+
+        <p>
+          Le travail spécifique à <code>ntds2bh</code> se concentre sur les étapes nécessaires au graphe :
+        </p>
+
         <ul>
-          <li>
-            L'outil travaille à partir d'un snapshot offline. Il reconstruit l'état contenu dans le fichier fourni, pas
-            l'état live actuel du domaine.
-          </li>
-          <li>
-            La qualité du graphe dépend de la qualité et de l'exhaustivité du <code>NTDS.dit</code> fourni.
-          </li>
-          <li>
-            Un graphe BloodHound accélère l'analyse, mais les chemins critiques doivent toujours être validés par
-            l'auditeur.
-          </li>
-          <li>
-            La page publique décrit l'architecture et le fonctionnement général sans exposer de dump réel, donnée client
-            ou secret.
-          </li>
+          <li>résolution des références vers <code>sd_table</code> ;</li>
+          <li>construction des index SID, DN, DNT, GUID, SPN et primary groups ;</li>
+          <li>typage BloodHound des objets ;</li>
+          <li>résolution des ACE et mapping vers les droits ;</li>
+          <li>reconstruction des memberships, délégations, GPO, trusts et hiérarchie ;</li>
+          <li>normalisation des objets AD CS ;</li>
+          <li>écriture des collections BloodHound CE v6 ;</li>
+          <li>contrôle d'intégrité sémantique des sorties.</li>
         </ul>
 
-        <h2 id="apports">7. Ce que ça implique</h2>
-        <p>
-          Concrètement, le travail porte sur la lecture d'une base NTDS offline (tables ESE, schéma, DNT, distinguished
-          names, SIDs, memberships, primary groups, ACL et ACEs), la conversion des security descriptors binaires en
-          relations, et l'écriture des collections BloodHound CE.
-        </p>
-
-        <p>
-          Pour un audit ou un lab, ça transforme un dump difficile à exploiter à la main en graphe navigable et
-          partageable, sans toucher au domaine.
-        </p>
-
-        <h2 id="attribution">8. Attribution technique</h2>
-        <p>
-          Le parsing NTDS bas niveau reprend des composants hérités de <code>ntdissector</code>, dont l'ouverture de la
-          base ESE, la lecture des tables internes, la résolution du schéma et la normalisation des attributs.
-          <code>ntds2bh</code> ajoute la couche orientée BloodHound : indexation des SIDs, primary groups, domain
-          controllers et GUIDs, résolution des ACL, mapping des ACEs vers des droits BloodHound, reconstruction des
-          relations, gestion des objets AD CS et écriture des collections finales.
-        </p>
-
         <details>
-          <summary>Voir la répartition détaillée du code</summary>
-          <pre><code>Hérité de ntdissector :
-- ouverture de la base ESE via dissect.database.ese
-- lecture de datatable, link_table et sd_table
-- résolution des colonnes ATT* vers les noms LDAP
-- résolution des objectClass
-- reconstruction des distinguished names
-- sérialisation et formatage des records NTDS
-
-Ajouté par ntds2bh :
-- get_parsed_sd() pour retrouver les security descriptors depuis sd_table
-- build_indexes() pour construire les caches SID, primaryGroupID, DCs, objectType GUIDs et domaine
-- utils/ace_resolver.py pour mapper les ACEs vers les droits BloodHound
-- utils/sid_resolver.py pour gérer well-known SIDs et types d'objets
-- utils/adcs.py pour normaliser les objets AD CS
-- pipeline/orchestrator.py pour router les objets et reconstruire les relations
-- models/*.py pour produire les shapes BloodHound CE
-- pipeline/writer.py pour écrire bloodhound.zip ou un dossier de collections JSON</code></pre>
+          <summary>Voir le pipeline d'implémentation plus en détail</summary>
+          <pre><code>NTDS.dit
+  → ouverture ESE
+  → reconstruction du schéma
+  → lecture datatable / link_table / sd_table
+  → reconstruction DN / SID / GUID / SPN
+  → construction des index globaux
+  → classification des objets
+  → reconstruction des relations
+  → parsing et résolution des ACL
+  → enrichissement GPO / délégations / AD CS / trusts
+  → modèles BloodHound CE
+  → validation des références et meta.count
+  → bloodhound.zip</code></pre>
         </details>
 
-        <details>
-          <summary>Voir le pipeline détaillé complet</summary>
-          <pre><code>main.py
-    -&gt; arguments -n NTDS.dit, -o output, --no-zip, -v, -q
-    -&gt; writer ZIP ou dossier JSON
 
-core.ntds_base.NTDS
-    -&gt; datatable
-    -&gt; link_table
-    -&gt; sd_table
-    -&gt; schema caches
-    -&gt; identity caches
-    -&gt; security descriptor cache
+        <h2>Conclusion</h2>
 
-pipeline.orchestrator.run
-    -&gt; découverte du domaine
-    -&gt; build_indexes()
-    -&gt; serializeRecord()
-    -&gt; formatRecord()
-    -&gt; routage par objectClass ou sAMAccountType
-    -&gt; skip des objets isDeleted
+        <p>
+          Au départ, la question était simplement de savoir si une copie de <code>NTDS.dit</code> pouvait redevenir
+          un graphe BloodHound utile sans reparler au domaine.
+        </p>
 
-security descriptor path
-    -&gt; get_parsed_sd()
-    -&gt; parse_ntSecurityDescriptor()
-    -&gt; parse_aces()
-    -&gt; resolve_aces()
+        <p>
+          Le travail a montré que oui pour une grande partie du graphe statique, mais à une condition :
+          ne pas traiter NTDS comme un fichier qu'il suffit de convertir.
+          Il faut reconstruire les identités avant les relations, comprendre comment les liens sont stockés,
+          suivre les références vers les security descriptors, interpréter correctement les ACE
+          et vérifier chaque règle sur un état connu.
+        </p>
 
-models/*.py
-    -&gt; map_user()
-    -&gt; map_computer()
-    -&gt; map_group()
-    -&gt; map_domain()
-    -&gt; map_ou()
-    -&gt; map_container()
-    -&gt; map_gpo()
-    -&gt; map_certtemplate()
-    -&gt; map_enterpriseca()
-    -&gt; map_rootca()
-    -&gt; map_aiaca()
-    -&gt; map_ntauthstore()
-    -&gt; map_issuancepolicy()
-    -&gt; map_trust()
+        <p>
+          C'est aussi ce qui a rendu le projet intéressant à développer.
+          Les bugs importants n'étaient pas des erreurs de syntaxe ou de JSON.
+          Ils venaient de détails comme un lien supprimé encore présent physiquement,
+          un <code>sd_id</code> de huit octets pris pour un descripteur complet,
+          ou une ACE trop générique transformée en droit qu'elle ne devait pas produire.
+        </p>
 
-relationship enrichment
-    -&gt; group memberships depuis link_table
-    -&gt; primaryGroupID backfill
-    -&gt; delegation resolution
-    -&gt; hierarchy stitching
-    -&gt; trusts
+        <p>
+          <code>ntds2bh</code> ne remplace pas SharpHound et ne prétend pas donner l'état live du domaine.
+          Il ajoute une autre façon de travailler : partir d'un artefact froid et retrouver le maximum
+          de structure Active Directory qu'il contient réellement.
+        </p>
 
-writer
-    -&gt; BloodHound CE JSON collections
-    -&gt; meta.version = 6
-    -&gt; bloodhound.zip ou dossier JSON</code></pre>
-        </details>
       </div>
     </article>
   </main>
