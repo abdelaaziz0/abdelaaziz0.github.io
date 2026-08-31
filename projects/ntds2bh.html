@@ -35,12 +35,39 @@
     crossorigin="anonymous" referrerpolicy="no-referrer">
   <link rel="stylesheet" href="../assets/css/writeup.css">
 
+  <style>
+    /*
+      writeup.css styles normal code blocks.
+      These rules only neutralize that styling for Mermaid diagrams.
+    */
+    pre.mermaid {
+      margin: 1.5rem 0;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      overflow: visible;
+      white-space: normal;
+      font-family: inherit;
+      line-height: normal;
+    }
+
+    pre.mermaid svg {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      height: auto;
+      margin: 0 auto;
+    }
+  </style>
+
   <script type="module">
-    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.16.1/dist/mermaid.esm.min.mjs';
+
     mermaid.initialize({
-      startOnLoad: true,
+      startOnLoad: false,
       theme: 'base',
-      securityLevel: 'loose',
+      securityLevel: 'strict',
+
       themeVariables: {
         fontFamily: 'Arial, sans-serif',
         primaryColor: '#ffffff',
@@ -48,8 +75,12 @@
         primaryBorderColor: '#1f2937',
         lineColor: '#6b7280',
         secondaryColor: '#f6f7f9',
-        tertiaryColor: '#ffffff'
+        secondaryTextColor: '#111111',
+        secondaryBorderColor: '#6b7280',
+        tertiaryColor: '#ffffff',
+        edgeLabelBackground: '#ffffff'
       },
+
       flowchart: {
         curve: 'linear',
         htmlLabels: true,
@@ -58,6 +89,14 @@
         useMaxWidth: true
       }
     });
+
+    try {
+      await mermaid.run({
+        querySelector: 'pre.mermaid'
+      });
+    } catch (error) {
+      console.error('Mermaid rendering failed:', error);
+    }
   </script>
 
 </head>
@@ -275,22 +314,22 @@
         </div>
 
         <figure>
-          <div class="mermaid">
+          <pre class="mermaid">
 flowchart LR
-    A["NTDS.dit<br/><small>base ESE</small>"] --> B["ntds2bh"]
-    B --> C["BloodHound CE<br/><small>JSON v6 / ZIP</small>"]
+    A["NTDS.dit<br/>base ESE"] --> B["ntds2bh"]
+    B --> C["BloodHound CE<br/>JSON v6 / ZIP"]
 
-    B --> D["datatable<br/><small>objets + attributs</small>"]
-    B --> E["link_table<br/><small>relations liées</small>"]
-    B --> F["sd_table<br/><small>descripteurs de sécurité</small>"]
+    B --> D["datatable<br/>objets + attributs"]
+    B --> E["link_table<br/>relations liées"]
+    B --> F["sd_table<br/>descripteurs de sécurité"]
 
-    D --> G["Schéma et identités<br/><small>DN · SID · GUID · SPN</small>"]
+    D --> G["Schéma et identités<br/>DN · SID · GUID · SPN"]
     E --> G
     F --> H["ACL / ACE"]
     G --> I["Objets et relations BloodHound"]
     H --> I
     I --> C
-          </div>
+          </pre>
           <figcaption>Le traitement croise plusieurs structures avant d'émettre le graphe.</figcaption>
         </figure>
 
@@ -327,13 +366,13 @@ flowchart LR
         </p>
 
         <figure>
-          <div class="mermaid">
+          <pre class="mermaid">
 flowchart LR
     A["DNT 1042<br/>RDN = CN=Alice<br/>PDNT = 300"]
     --> B["DNT 300<br/>RDN = OU=Users<br/>PDNT = 2"]
     --> C["DNT 2<br/>RDN = DC=lab"]
     --> D["CN=Alice,<br/>OU=Users,<br/>DC=lab,DC=local"]
-          </div>
+          </pre>
           <figcaption>Le DN complet est reconstruit en remontant la hiérarchie interne.</figcaption>
         </figure>
 
@@ -394,14 +433,14 @@ flowchart LR
         </p>
 
         <figure>
-          <div class="mermaid">
+          <pre class="mermaid">
 flowchart LR
     A["Lien supprimé<br/>dans Active Directory"]
     --> B["Entrée encore présente<br/>dans link_table"]
     --> C["Ancienne version<br/>fausse appartenance"]
     --> D["Filtre<br/>link_deltime / link_deactivetime"]
     --> E["Test de régression"]
-          </div>
+          </pre>
           <figcaption>Un lien supprimé peut rester physiquement présent dans <code>link_table</code>.</figcaption>
         </figure>
 
@@ -442,7 +481,7 @@ flowchart LR
         </p>
 
         <figure>
-          <div class="mermaid">
+          <pre class="mermaid">
 flowchart LR
     A["Objet NTDS"]
     --> B["nTSecurityDescriptor"]
@@ -450,7 +489,7 @@ flowchart LR
     --> D["sd_table"]
     --> E["Descripteur binaire"]
     --> F["Owner · DACL · ACE"]
-          </div>
+          </pre>
           <figcaption>Résolution d'un descripteur de sécurité référencé depuis un objet NTDS.</figcaption>
         </figure>
 
@@ -485,13 +524,13 @@ flowchart LR
         </p>
 
         <figure>
-          <div class="mermaid">
+          <pre class="mermaid">
 flowchart LR
-    A["ACE sur SQL Admins<br/><small>WRITE_PROPERTY · member</small>"]
+    A["ACE sur SQL Admins<br/>WRITE_PROPERTY · member"]
     --> B["Résolution du droit"]
     --> C["IT"]
     C -- AddMember --> D["SQL Admins"]
-          </div>
+          </pre>
           <figcaption>Une écriture sur l'attribut <code>member</code> du groupe devient une relation <code>AddMember</code>.</figcaption>
         </figure>
 
@@ -685,15 +724,15 @@ issuancepolicies</code></pre>
         </ol>
 
         <figure>
-          <div class="mermaid">
+          <pre class="mermaid">
 flowchart LR
-    A["1. ADBuilder<br/><small>cas connu</small>"]
-    --> B["2. Même état<br/><small>NTDS + SharpHound</small>"]
-    --> C["3. Comparer<br/><small>objets · propriétés · relations</small>"]
-    --> D["4. Vérifier<br/><small>LDAP · PowerShell · NTDS</small>"]
-    --> E["5. Rejouer<br/><small>test de régression</small>"]
+    A["1. ADBuilder<br/>cas connu"]
+    --> B["2. Même état<br/>NTDS + SharpHound"]
+    --> C["3. Comparer<br/>objets · propriétés · relations"]
+    --> D["4. Vérifier<br/>LDAP · PowerShell · NTDS"]
+    --> E["5. Rejouer<br/>test de régression"]
     E -. correction .-> A
-          </div>
+          </pre>
           <figcaption>Un écart est vérifié à la source, corrigé, puis rejoué.</figcaption>
         </figure>
 
