@@ -1,0 +1,9 @@
+---
+title: Writeups
+icon: fas fa-file-lines
+order: 3
+description: Technical writeups and lab attack chains.
+---
+<p class="page-intro">Technical writeups from HackTheBox and TryHackMe. Pages marked pending have no published attack chain yet.</p>
+{% assign writeup_pages = site.pages | where: 'kind', 'writeup' | sort: 'research_date' | reverse %}
+<div class="research-list">{% for item in writeup_pages %}{% include work-row.html item=item %}{% endfor %}</div>

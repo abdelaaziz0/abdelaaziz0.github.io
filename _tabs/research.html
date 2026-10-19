@@ -1,0 +1,20 @@
+---
+title: Research
+icon: fas fa-flask
+order: 1
+description: Security research and technical notes by area.
+---
+<p class="page-intro">Research notes are grouped by the technology they cover. Existing articles retain their original URLs.</p>
+{% assign areas = 'Active Directory|Windows Internals|COM / DCOM|Reverse Engineering|Mobile Security|Web Security|Vulnerability Research|Cryptography|Cloud and Containers' | split: '|' %}
+{% assign research_pages = site.pages | where: 'kind', 'research' %}
+{% assign research_posts = site.posts | where: 'section', 'research' %}
+{% assign all_research = research_pages | concat: research_posts %}
+{% for area in areas %}
+  {% assign area_items = all_research | where: 'research_area', area | sort: 'research_date' | reverse %}
+  {% if area_items.size > 0 %}
+  <section class="research-section" aria-labelledby="area-{{ area | slugify }}">
+    <div class="section-heading"><h2 id="area-{{ area | slugify }}">{{ area }}</h2><span class="section-count">{{ area_items.size }} entries</span></div>
+    <div class="research-list">{% for item in area_items %}{% include work-row.html item=item %}{% endfor %}</div>
+  </section>
+  {% endif %}
+{% endfor %}

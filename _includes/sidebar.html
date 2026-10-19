@@ -1,0 +1,29 @@
+<aside aria-label="Sidebar" id="sidebar" class="d-flex flex-column align-items-end">
+  <header class="profile-wrapper">
+    <a class="site-title d-block" href="{{ '/' | relative_url }}">{{ site.title }}</a>
+    <p class="site-subtitle fst-italic mb-0">{{ site.tagline }}</p>
+  </header>
+  <nav class="flex-column flex-grow-1 w-100 ps-0" aria-label="Primary navigation">
+    <ul class="nav">
+      <li class="nav-item{% if page.layout == 'home' %} active{% endif %}"><a href="{{ '/' | relative_url }}" class="nav-link"><i class="fa-fw fas fa-home"></i><span>HOME</span></a></li>
+      {% for tab in site.tabs %}
+        {% if tab.order < 50 %}
+        <li class="nav-item{% if tab.url == page.url %} active{% endif %}"><a href="{{ tab.url | relative_url }}" class="nav-link"><i class="fa-fw {{ tab.icon }}"></i><span>{{ tab.title | upcase }}</span></a></li>
+        {% endif %}
+      {% endfor %}
+    </ul>
+    <div class="sidebar-secondary"><a href="{{ '/tags/' | relative_url }}">Tags</a><a href="{{ '/categories/' | relative_url }}">Categories</a></div>
+  </nav>
+  <div class="sidebar-bottom d-flex flex-wrap align-items-center w-100">
+    {% unless site.theme_mode == 'light' or site.theme_mode == 'dark' %}
+      <button type="button" class="btn btn-link nav-link" aria-label="Switch mode" id="mode-toggle" data-bs-toggle="dropdown">
+        <i class="fa-solid fa-display" data-theme-mode="system"></i>
+        <i class="fa-regular fa-sun" data-theme-mode="light"></i>
+        <i class="fa-regular fa-moon" data-theme-mode="dark"></i>
+      </button>
+    {% endunless %}
+    <a href="https://github.com/{{ site.github.username }}" aria-label="GitHub" target="_blank" rel="noopener noreferrer"><i class="fab fa-github"></i></a>
+    {% if site.linkedin_url %}<a href="{{ site.linkedin_url }}" aria-label="LinkedIn" target="_blank" rel="noopener noreferrer"><i class="fab fa-linkedin"></i></a>{% endif %}
+    <a href="{{ '/feed.xml' | relative_url }}" aria-label="RSS"><i class="fas fa-rss"></i></a>
+  </div>
+</aside>

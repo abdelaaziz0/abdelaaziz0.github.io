@@ -1,53 +1,19 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description"
-    content="HTB Fluffy Writeup - Full Active Directory attack chain: writable SMB share, CVE-2025-24071 NetNTLMv2 capture, hash cracking, Service Accounts abuse, Shadow Credentials, AD CS ESC16, and Administrator WinRM.">
-  <link rel="canonical" href="https://abdelaaziz0.github.io/writeups/fluffy.html">
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-  <link rel="icon" href="/assets/img/favicon-32.png" sizes="32x32" type="image/png">
-  <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://abdelaaziz0.github.io/writeups/fluffy.html">
-  <meta property="og:title" content="Fluffy - HTB Writeup">
-  <meta property="og:description" content="HTB Fluffy Writeup - Full Active Directory attack chain: writable SMB share, CVE-2025-24071 NetNTLMv2 capture, hash cracking, Service Accounts abuse, Shadow Credentials, AD CS ESC16, and Administrator WinRM.">
-  <meta property="og:image" content="https://abdelaaziz0.github.io/assets/img/og-card.jpg">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="Abdelaaziz Belkhair - Pentest Web et Active Directory">
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Fluffy - HTB Writeup">
-  <meta name="twitter:description" content="HTB Fluffy Writeup - Full Active Directory attack chain: writable SMB share, CVE-2025-24071 NetNTLMv2 capture, hash cracking, Service Accounts abuse, Shadow Credentials, AD CS ESC16, and Administrator WinRM.">
-  <meta name="twitter:image" content="https://abdelaaziz0.github.io/assets/img/og-card.jpg">
-  <meta name="twitter:image:alt" content="Abdelaaziz Belkhair - Pentest Web et Active Directory">
-  <title>Fluffy - HTB Writeup</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
-    rel="stylesheet">
-  <link rel="stylesheet" href="../assets/css/writeup.css"></head>
-
-<body>
-
-  <header>
-  <nav>
-    <a class="wordmark" href="../index.html"><span class="dot"></span> Abdelaaziz Belkhair</a>
-      <ul class="nav-links">
-        <li><a href="../index.html#about">Profil</a></li>
-        <li><a href="../projects.html">Travail</a></li>
-        <li><a href="../writeups.html" class="active">Writeups</a></li>
-        <li><a href="../blog.html">Articles</a></li>
-        <li><a href="../index.html#parcours">Expérience</a></li>
-        <li><a href="../index.html#contact">Contact</a></li>
-        <li><a href="../cv.pdf" download>CV</a></li>
-      </ul>
-  </nav>
-</header>
-
-  <div class="wrapper">
+---
+layout: legacy-article
+media_subpath: /writeups
+title: Fluffy
+description: 'HTB Fluffy Writeup - Full Active Directory attack chain: writable SMB share, CVE-2025-24071 NetNTLMv2 capture,
+  hash cracking, Service Accounts abuse, Shadow Credentials, AD CS ESC16, and Administrator WinRM.'
+kind: writeup
+research_area: Active Directory
+status: Published
+lang: en
+toc: false
+research_date: '2026-05-12'
+date: '2026-05-12'
+---
+{% raw %}
+<div class="wrapper">
 
     <div class="back-row">
       <a class="back-link" href="../writeups.html">← Retour aux analyses</a>
@@ -909,11 +875,4 @@ PS C:\Users\Administrator\Desktop> type root.txt
     </section>
 
   </div>
-
-  <footer>
-    © 2026 &nbsp;·&nbsp; HTB Fluffy Writeup &nbsp;·&nbsp; Windows Active Directory / AD CS
-  </footer>
-
-</body>
-
-</html>
+{% endraw %}

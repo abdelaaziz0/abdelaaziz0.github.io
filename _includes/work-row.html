@@ -1,0 +1,17 @@
+{% assign item = include.item %}
+<article class="research-row">
+  <div class="research-row__meta">
+    {% if item.research_date %}<time datetime="{{ item.research_date }}">{{ item.research_date | date: '%Y-%m-%d' }}</time>{% endif %}
+    {% if item.area %}<span>{{ item.area }}</span>{% elsif item.research_area %}<span>{{ item.research_area }}</span>{% endif %}
+    {% if item.language %}<span>{{ item.language }}</span>{% endif %}
+    {% if item.status and item.status != 'Published' %}<span>{{ item.status }}</span>{% endif %}
+  </div>
+  <h3><a href="{{ item.url | relative_url }}">{{ item.title }}</a></h3>
+  {% if item.description %}<p>{{ item.description }}</p>{% endif %}
+  {% if item.tags.size > 0 or item.repository %}
+  <div class="research-row__extras">
+    {% if item.tags.size > 0 %}<div class="research-tags" aria-label="Tags">{% for tag in item.tags %}<span>{{ tag }}</span>{% endfor %}</div>{% endif %}
+    {% if item.repository %}<a href="{{ item.repository }}" target="_blank" rel="noopener noreferrer">Repository ↗</a>{% endif %}
+  </div>
+  {% endif %}
+</article>

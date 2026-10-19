@@ -1,0 +1,95 @@
+# Edit this file to add or feature a tool. Leave unknown URLs blank.
+- name: KerbState
+  description: Carves an LSASS minidump from a hypervisor guest core by walking the guest page tables, then rebuilds Kerberos tickets with a Windows-agnostic, profile-driven engine and exports them as kirbi and ccache.
+  area: Windows
+  language: C++
+  tags: [Kerberos, LSASS, Memory forensics, Minidump]
+  writeup: /projects/kerbstate.html
+  featured: true
+  status: Published
+
+- name: KDSExtract
+  description: Exploits CVE-2026-58222 in Samba AD DC, turning an LDAP Compare into a comparison oracle to recover the KDS root key and derive gMSA passwords offline.
+  area: Active Directory
+  language: Python
+  tags: [CVE-2026-58222, LDAP, GKDI, gMSA]
+  github: https://github.com/abdelaaziz0/KDSExtract
+  writeup: /projects/kdsextract.html
+  featured: true
+  status: Published
+
+- name: ntds2bh
+  description: Converts an offline NTDS.dit and SYSTEM hive into a BloodHound CE import ZIP.
+  area: Active Directory
+  language: Python
+  tags: [NTDS.dit, BloodHound, Offline analysis]
+  writeup: /projects/ntds2bh.html
+  featured: true
+  status: Published
+
+- name: dMSA-Reaper
+  description: Maps and exercises BadSuccessor paths involving dMSAs in Windows Server 2025.
+  area: Active Directory
+  language: Python
+  tags: [dMSA, BadSuccessor]
+  github: https://github.com/abdelaaziz0/dmsa-reaper
+  featured: true
+  status: Published
+
+- name: ADBuilder
+  description: Builds Active Directory labs from JSON definitions of users, groups, machines, and attack scenarios.
+  area: Active Directory
+  language: PowerShell
+  tags: [Lab, Automation]
+  github: https://github.com/abdelaaziz0/ADBuilder
+  featured: true
+  status: Published
+
+- name: PyWSUS-Relay
+  description: WSUS over HTTP lab fork for NTLM capture, relay, and AD CS certificate enrollment.
+  area: Windows
+  language: Python
+  tags: [WSUS, NTLM, AD CS]
+  github: https://github.com/abdelaaziz0/pyWSUS-relay
+  writeup: /posts/pywsus-relay-ntlm-relay/
+  featured: true
+  status: Published
+
+- name: NTLMancer
+  description: Keeps an authenticated NTLM relay socket open and routes browser traffic through a local SOCKS gateway.
+  area: Windows
+  language: Python
+  tags: [NTLM relay, SOCKS]
+  github: https://github.com/abdelaaziz0/NTLMancer
+  featured: true
+  status: Published
+
+- name: Kerbrutal
+  description: Kerberos testing tool with SOCKS5 transport, jitter, and lockout controls.
+  area: Active Directory
+  language: Go
+  tags: [Kerberos, SOCKS5]
+  github: https://github.com/abdelaaziz0/Kerbrutal
+  featured: false
+  status: Published
+
+# These names appeared in the redesign brief but not in the repository.
+# Add verified descriptions and URLs before featuring them.
+- name: ComWriteRace
+  description: Workflow for finding COM methods that re-resolve caller-controlled paths and testing them against a controlled fixture.
+  area: Windows / COM
+  language: C++ / C#
+  tags: [COM, NTFS, TOCTOU]
+  github: https://github.com/abdelaaziz0/ComWriteRace
+  writeup: /posts/comwriterace-workflow/
+  featured: true
+  status: Lab fixture validated
+
+- name: GPOWake
+  description: Read-only AD assessment that finds dangerous computer-side GPO settings and models minimal permission-backed changes that could make them effective.
+  area: Active Directory
+  tags: [Group Policy, GPO, SYSVOL, ACL]
+  github: https://github.com/abdelaaziz0/GPOWake
+  writeup: /posts/gpowake-dormant-gpo/
+  featured: true
+  status: Published

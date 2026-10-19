@@ -1,0 +1,34 @@
+---
+layout: default
+---
+<div id="research-home" class="px-1">
+  <header class="home-intro">
+    <h1>{{ site.title }}</h1>
+    <p class="lead">Security research · Reverse engineering · Offensive security</p>
+    <p>I publish technical notes and build tooling for Active Directory, Windows, and web security.</p>
+    <p class="home-links"><a href="{{ '/research/' | relative_url }}">Research</a><span aria-hidden="true">·</span><a href="{{ '/tools/' | relative_url }}">Tools</a><span aria-hidden="true">·</span><a href="{{ '/writeups/' | relative_url }}">Writeups</a><span aria-hidden="true">·</span><a href="https://github.com/{{ site.github.username }}" target="_blank" rel="noopener noreferrer">GitHub</a></p>
+  </header>
+
+  <section class="home-section" aria-labelledby="selected-work-title">
+    <div class="home-section__heading"><h2 id="selected-work-title">Selected work</h2><a href="{{ '/tools/' | relative_url }}">All tools</a></div>
+    <div class="tool-list">{% for tool in site.data.tools %}{% if tool.featured %}{% include tool-row.html tool=tool %}{% endif %}{% endfor %}</div>
+  </section>
+
+  <section class="home-section" aria-labelledby="recent-research-title">
+    <div class="home-section__heading"><h2 id="recent-research-title">Research and tool writeups</h2><a href="{{ '/research/' | relative_url }}">All research</a></div>
+    {% assign research_pages = site.pages | where: 'kind', 'research' | where: 'status', 'Published' %}
+    {% assign research_posts = site.posts | where: 'section', 'research' %}
+    {% assign research_entries = research_pages | concat: research_posts | where: 'featured', true | sort: 'research_date' | reverse %}
+    <div class="research-list">
+      {% for item in research_entries limit: 5 %}{% include work-row.html item=item %}{% endfor %}
+    </div>
+  </section>
+
+  <section class="home-section" aria-labelledby="ctf-writeups-title">
+    <div class="home-section__heading"><h2 id="ctf-writeups-title">CTF and HTB writeups</h2><a href="{{ '/writeups/' | relative_url }}">All writeups</a></div>
+    {% assign ctf_writeups = site.pages | where: 'kind', 'writeup' | where: 'status', 'Published' | sort: 'research_date' | reverse %}
+    <div class="research-list">
+      {% for item in ctf_writeups limit: 3 %}{% include work-row.html item=item %}{% endfor %}
+    </div>
+  </section>
+</div>

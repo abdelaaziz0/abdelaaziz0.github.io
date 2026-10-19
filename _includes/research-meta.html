@@ -1,0 +1,10 @@
+<dl class="research-facts" aria-label="Research metadata">
+  {% if page.research_area %}<div><dt>Area</dt><dd>{{ page.research_area }}</dd></div>{% endif %}
+  {% if page.research_status %}<div><dt>Status</dt><dd>{{ page.research_status }}</dd></div>{% endif %}
+  {% if page.project %}<div><dt>Tool</dt><dd>{{ page.project }}</dd></div>{% endif %}
+  {% if page.repository %}<div><dt>Repository</dt><dd><a href="{{ page.repository }}">{{ page.repository }}</a></dd></div>{% endif %}
+  {% if page.cve %}<div><dt>CVE</dt><dd>{{ page.cve }}</dd></div>{% endif %}
+  {% if page.affected_technology %}<div><dt>Affected technology</dt><dd>{{ page.affected_technology }}</dd></div>{% endif %}
+  {% if page.tags %}<div><dt>Tags</dt><dd>{% for tag in page.tags %}<span class="research-meta-tag">{{ tag }}</span>{% unless forloop.last %} · {% endunless %}{% endfor %}</dd></div>{% endif %}
+  {% if page.external_references %}<div><dt>References</dt><dd>{% for reference in page.external_references %}<a href="{{ reference.url }}">{{ reference.title }}</a>{% unless forloop.last %}, {% endunless %}{% endfor %}</dd></div>{% endif %}
+</dl>

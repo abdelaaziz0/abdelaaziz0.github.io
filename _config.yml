@@ -1,0 +1,79 @@
+theme: jekyll-theme-chirpy
+lang: en
+timezone: Africa/Monrovia
+
+title: Abdelaaziz Belkhair
+tagline: Security research
+description: Security research, offensive tooling, and technical writeups by Abdelaaziz Belkhair.
+url: https://abdelaaziz0.github.io
+baseurl: ""
+
+github:
+  username: abdelaaziz0
+social:
+  name: Abdelaaziz Belkhair
+  links:
+    - https://github.com/abdelaaziz0
+    - https://www.linkedin.com/in/abdelaaziz-belkhair-12502024b/
+linkedin_url: https://www.linkedin.com/in/abdelaaziz-belkhair-12502024b/
+social_preview_image: /assets/img/og-card.jpg
+
+theme_mode: dark
+toc: true
+paginate: 10
+pwa:
+  enabled: false
+  cache:
+    enabled: false
+
+kramdown:
+  footnote_backlink: "&#8617;&#xfe0e;"
+  syntax_highlighter: rouge
+  syntax_highlighter_opts:
+    css_class: highlight
+    span:
+      line_numbers: false
+    block:
+      line_numbers: true
+      start_line: 1
+
+collections:
+  tabs:
+    output: true
+    sort_by: order
+
+defaults:
+  - scope:
+      path: ""
+      type: posts
+    values:
+      layout: post
+      toc: true
+      comments: false
+      permalink: /posts/:title/
+  - scope:
+      path: ""
+      type: tabs
+    values:
+      layout: page
+      permalink: /:title/
+
+sass:
+  style: compressed
+
+exclude:
+  - README.md
+  - docs
+  - Gemfile
+  - Gemfile.lock
+  - vendor
+  - .github
+
+jekyll-archives:
+  enabled: [categories, tags]
+  layouts:
+    category: category
+    tag: tag
+  permalinks:
+    category: /categories/:name/
+    tag: /tags/:name/

@@ -1,0 +1,28 @@
+---
+layout: compress
+---
+{% assign research_pages = site.pages | where: 'kind', 'research' | where: 'status', 'Published' %}
+{% assign writeup_pages = site.pages | where: 'kind', 'writeup' | where: 'status', 'Published' %}
+{% assign indexed_pages = research_pages | concat: writeup_pages %}
+[
+{% for item in indexed_pages %}
+  {
+    "title": {{ item.title | jsonify }},
+    "url": {{ item.url | relative_url | jsonify }},
+    "categories": {{ item.research_area | jsonify }},
+    "tags": {{ item.tags | join: ', ' | jsonify }},
+    "date": {{ item.research_date | default: '' | jsonify }},
+    "content": {{ item.content | strip_html | normalize_whitespace | jsonify }}
+  }{% unless forloop.last and site.posts.size == 0 %},{% endunless %}
+{% endfor %}
+{% for post in site.posts %}
+  {
+    "title": {{ post.title | jsonify }},
+    "url": {{ post.url | relative_url | jsonify }},
+    "categories": {{ post.categories | join: ', ' | jsonify }},
+    "tags": {{ post.tags | join: ', ' | jsonify }},
+    "date": {{ post.date | jsonify }},
+    "content": {{ post.content | strip_html | normalize_whitespace | jsonify }}
+  }{% unless forloop.last %},{% endunless %}
+{% endfor %}
+]

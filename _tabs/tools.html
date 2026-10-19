@@ -1,0 +1,8 @@
+---
+title: Tools
+icon: fas fa-code-branch
+order: 2
+description: Offensive security tools and lab projects.
+---
+<p class="page-intro">Tools and lab projects. Repository links are included where they are present in the existing site.</p>
+<div class="tool-list">{% for tool in site.data.tools %}{% unless tool.status == 'Draft' %}{% include tool-row.html tool=tool %}{% endunless %}{% endfor %}</div>

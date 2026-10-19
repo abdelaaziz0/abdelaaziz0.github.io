@@ -1,0 +1,478 @@
+---
+layout: legacy-article
+title: KDSExtract
+description: 'Technical writeup of KDSExtract: how a Samba LDAP Compare filter injection (CVE-2026-58222) becomes an ordered comparison oracle, how it recovers the KDS root key byte by byte, and how gMSA passwords are derived from it offline.'
+kind: research
+research_area: Active Directory
+status: Published
+lang: en
+toc: false
+legacy_mermaid: true
+project: KDSExtract
+featured: true
+repository: https://github.com/abdelaaziz0/KDSExtract
+cve: CVE-2026-58222
+affected_technology: Samba AD DC LDAP (AD DC releases from 4.0.0; gMSA impact from 4.21.0), Group Key Distribution Service, gMSA
+research_status: Derivation checked against Samba's twelve GKDI reference vectors; full oracle-to-password chain validated in a controlled Samba 4.24.4 vs 4.24.5 lab that compares results against controller ground truth
+external_references:
+  - title: Samba advisory CVE-2026-58222
+    url: https://www.samba.org/samba/security/CVE-2026-58222.html
+  - title: MS-GKDI, Group Key Distribution Protocol
+    url: https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-gkdi/
+  - title: Semperis GoldenGMSA
+    url: https://github.com/Semperis/GoldenGMSA
+---
+{% raw %}
+<div class="legacy-main container">
+    <a href="/tools/" class="back-link"><i class="fas fa-arrow-left"></i> Back to tools</a>
+
+    <article>
+      <section class="challenge-card">
+        <span class="challenge-platform"><i class="fas fa-key"></i> Samba AD &middot; LDAP &middot; GKDI / gMSA</span>
+        <h1 class="challenge-title">KDSExtract</h1>
+        <p class="challenge-subtitle">
+          Samba answered an LDAP <code>Compare</code> by formatting the caller's attribute name and value straight into
+          an internal filter string. That one line lets a normal user change the comparison operator and reach attributes
+          the server is meant to hide. KDSExtract rides it into an ordered oracle, recovers the KDS root key one byte at a
+          time, and derives gMSA passwords from it offline.
+        </p>
+        <div class="challenge-meta">
+          <span class="meta-badge category">Python</span>
+          <span class="meta-badge category">Active Directory</span>
+          <span class="meta-badge tag">CVE-2026-58222</span>
+          <span class="meta-badge tag">LDAP Compare</span>
+          <span class="meta-badge tag">Comparison oracle</span>
+          <span class="meta-badge tag">GKDI</span>
+          <span class="meta-badge tag">gMSA</span>
+          <span class="meta-badge tag">SP800-108</span>
+          <a class="meta-badge tag" href="https://github.com/abdelaaziz0/KDSExtract" target="_blank" rel="noopener"
+            aria-label="GitHub KDSExtract"><i class="fab fa-github"></i></a>
+        </div>
+      </section>
+
+      <nav class="toc" aria-label="Table of contents">
+        <div class="toc-title">Contents</div>
+        <ol>
+          <li><a href="#bug">The bug</a></li>
+          <li><a href="#oracle">Turning Compare into an ordered oracle</a></li>
+          <li><a href="#recovery">Recovering a value byte by byte</a></li>
+          <li><a href="#locate">Finding a root key you cannot read</a></li>
+          <li><a href="#derive">Deriving the password offline</a></li>
+          <li><a href="#lab">What the lab establishes</a></li>
+          <li><a href="#fix">Fixed versions and detection</a></li>
+          <li><a href="#usage">Running it</a></li>
+          <li><a href="#credits">Credits</a></li>
+        </ol>
+      </nav>
+
+      <div class="article-content">
+
+        <p>
+          Samba's AD DC answers an LDAP <code>Compare</code> request by building a small internal search filter and
+          evaluating it. Before the 2026 security releases it built that filter by formatting the request's attribute name
+          and value straight into a string. That construction is CVE-2026-58222, rated 8.8, and it does two things at
+          once: it lets a caller change the comparison operator, and it runs the comparison in a context that skips the
+          server's confidential-attribute checks. KDSExtract uses the result as an oracle to read
+          <code>msKds-RootKeyData</code>, the Group Key Distribution Service (GKDI) root key, one byte at a time, then
+          derives gMSA passwords from it offline.
+        </p>
+
+        <p>
+          The vulnerability was found and reported by others, and the gMSA key derivation is already documented in MS-GKDI
+          and implemented in tools like GoldenGMSA. What this project adds is a tested implementation of the whole chain:
+          the oracle, the byte recovery, a dependency-free derivation that reproduces Samba's own reference vectors, and a
+          lab that ties a recovered key back to the controller's ground truth. This is authorized lab work against
+          environments I control. The code shown below is from commit <code>80a08cc</code>.
+        </p>
+
+
+        <h2 id="bug">The bug</h2>
+
+        <p>
+          Samba built the <code>Compare</code> filter roughly like this:
+        </p>
+
+        <pre><code>filter = talloc_asprintf(local_ctx, "(%s=%*s)", req-&gt;attribute,
+                         (int)req-&gt;value.length, req-&gt;value.data);</code></pre>
+
+        <p>
+          <code>req-&gt;attribute</code> and <code>req-&gt;value</code> come from the client's CompareRequest. At the
+          protocol level the client sends them as two octet strings, which is exactly what KDSExtract's
+          <code>compare()</code> puts on the wire. Samba pastes both into the filter with no validation of the attribute
+          name and no escaping of the value. The two problems are separate, and each is limited on its own.
+        </p>
+
+        <p>
+          An LDAP <code>Compare</code> is an equality test, <code>(attribute=value)</code>. If the attribute string
+          already ends in <code>&gt;</code>, the filter reads <code>(attribute&gt;=value)</code>, which is a
+          greater-or-equal match. The client controls the attribute field, so the client controls the operator. On its
+          own that only lets you compare values you were already allowed to read.
+        </p>
+
+        <p>
+          The second problem is that this internal search runs without the marker Samba uses for untrusted requests, so
+          the access-control module that normally hides confidential attributes does not apply. Attributes like
+          <code>msKds-RootKeyData</code>, which a normal <code>Search</code> never returns, take part in the comparison.
+          The advisory calls this the trusted-request confusion. On its own, without operator control, it still only
+          answers one exact-match question.
+        </p>
+
+        <p>
+          Combined, they give an ordered true or false test against a value you are not allowed to read. That is the
+          primitive an oracle needs.
+        </p>
+
+
+        <h2 id="oracle">Turning Compare into an ordered oracle</h2>
+
+        <p>
+          The injection primitive is two short functions:
+        </p>
+
+        <pre><code>def inject_ge(attribute: str) -&gt; str:
+    return attribute + "&gt;"            # (attr=value) becomes (attr&gt;=value)
+
+def escape_ldap_filter_bytes(value: bytes) -&gt; bytes:
+    return b"".join(b"\\%02x" % b for b in value)</code></pre>
+
+        <p>
+          The operator change is the appended <code>&gt;</code>. I send the attribute as
+          <code>msKds-RootKeyData&gt;</code>, and Samba formats <code>(msKds-RootKeyData&gt;=...)</code>.
+        </p>
+
+        <p>
+          The value needs more care, because the filter is built with <code>%*s</code>, a length-bounded copy of a C
+          string. A raw value that contains a zero byte would truncate at the first NUL, and the server would compare a
+          shortened value instead of the real candidate. I send every byte as a <code>\XX</code> hex escape. The escaped
+          form has no NUL, so it survives the format string, and the LDB filter parser unescapes <code>\XX</code> back to
+          the original byte before the match. The comparison then runs against the exact candidate I chose.
+        </p>
+
+        <p>
+          <code>msKds-RootKeyData</code> is an octet string, and its matching rule compares octet strings as raw bytes,
+          with a shorter value sorting before a longer one that shares its prefix. So <code>(attr&gt;=candidate)</code>
+          answers whether the stored bytes are greater than or equal to the candidate in byte order. Each request returns
+          <code>compareTrue</code> (result code 6) or <code>compareFalse</code> (result code 5). On a patched server the
+          injected attribute name fails attribute-name validation and the request returns
+          <code>invalidAttributeSyntax</code> (code 21) instead, which is how detection tells the two apart.
+        </p>
+
+        <figure>
+          <pre class="mermaid">
+flowchart TD
+    A["Client Compare<br/>attribute = msKds-RootKeyData&gt;<br/>value = \XX\XX..."]
+    --> B["Samba formats<br/>(%s=%*s)"]
+    --> C["(msKds-RootKeyData&gt;=...)"]
+    C --> D{"attribute name<br/>validated?"}
+    D -->|"vulnerable: no"| E["internal search,<br/>confidential check skipped"]
+    E --> F["compareTrue (6)<br/>or compareFalse (5)"]
+    D -->|"patched: yes"| G["invalidAttributeSyntax (21)"]
+          </pre>
+          <figcaption>Appending one byte to the attribute name rewrites the operator. The vulnerable path answers an ordered true or false; the patched path rejects the attribute name.</figcaption>
+        </figure>
+
+
+        <h2 id="recovery">Recovering a value byte by byte</h2>
+
+        <p>
+          A greater-or-equal test recovers one byte at a time.
+        </p>
+
+        <pre><code>def recover_byte(self, prefix: bytes) -&gt; int:
+    if not self.ge(prefix + b"\x01"):
+        return 0x00
+    lo, hi = 1, 0xFF
+    while lo &lt; hi:
+        mid = (lo + hi + 1) // 2
+        if self.ge(prefix + bytes([mid])):
+            lo = mid
+        else:
+            hi = mid - 1
+    return lo</code></pre>
+
+        <p>
+          <code>prefix</code> is the bytes recovered so far, and <code>ge(x)</code> asks whether the stored value is at
+          least <code>prefix + x</code>. The first probe asks for <code>prefix + 0x01</code>. If that is false, the next
+          byte is <code>0x00</code> and it cost one request. Otherwise a binary search over <code>0x01</code> to
+          <code>0xFF</code> finds the largest byte value whose answer is still true. That search runs at most eight times,
+          so a non-zero byte costs the first probe plus up to eight more, nine requests at most, and a zero byte costs
+          one.
+        </p>
+
+        <p>
+          Deciding the next byte and deciding where the value ends are different questions. <code>recover_byte</code>
+          assumes another byte exists. Whether to call it again depends on the length. <code>msKds-RootKeyData</code> is
+          64 bytes, so the loop simply stops at 64. When the length is unknown, the oracle probes
+          <code>prefix + 0x00</code> after each byte. Because a shorter stored value sorts before the same prefix followed
+          by any further byte, a true answer there means at least one more byte remains, and a false answer means the
+          value ends at the current prefix. That probe is the only place the zero-versus-end ambiguity is resolved.
+        </p>
+
+        <p>
+          The ceiling for the 64-byte key is nine requests per byte, so 576 requests, and the real total is lower whenever
+          a byte is zero or its search settles in eight steps. The exact count depends on the key, so I do not quote a
+          fixed number here; the tool reports it per run in its <code>--json</code> output and in the
+          <code>recover</code> command.
+        </p>
+
+        <p>
+          The recovered bytes are exact under three conditions: the server answers each <code>Compare</code>
+          consistently, the attribute really uses octet-string ordering, and the length is fixed and known. For
+          <code>msKds-RootKeyData</code> all three hold, since it is a fixed 64-byte octet string. The derivation step then
+          gives independent confirmation, because one wrong byte changes the derived NT hash completely, and the lab
+          checks that hash against the controller.
+        </p>
+
+
+        <h2 id="locate">Finding a root key you cannot read</h2>
+
+        <p>
+          The oracle needs a target DN, and the root key object is one an ordinary user cannot enumerate. KDS root keys
+          live under <code>CN=Master Root Keys,CN=Group Key Distribution Service,CN=Services</code> in the configuration
+          partition, as <code>msKds-ProvRootKey</code> objects. Samba hides those objects from normal users, so a
+          one-level search of the container usually returns nothing, and <code>list-keys</code> says so when it finds
+          none.
+        </p>
+
+        <p>
+          A gMSA account provides the way in. The account exposes <code>msDS-ManagedPasswordID</code>, which anyone who
+          can read the account can read. KDSExtract parses that blob, whose envelope magic is <code>KDSK</code>, for the
+          root key GUID and the key identifier (L0, L1, L2) the password was derived under, then builds the root key DN
+          directly from the GUID:
+        </p>
+
+        <pre><code>def kds_root_key_dn(ncs, guid):
+    return f"CN={guid},CN=Master Root Keys," \
+           f"CN=Group Key Distribution Service,CN=Services,{ncs.configuration}"</code></pre>
+
+        <p>
+          This is the path GoldenGMSA uses to locate the root key for a managed account. The read is what changes.
+          GoldenGMSA reads <code>msKds-RootKeyData</code> with rights that allow it. Here the attribute is unreadable, so
+          the <code>Compare</code> oracle recovers it instead. The oracle never issues a <code>Search</code> against the
+          root key object, so it needs no read right on it, only the ability to send a <code>Compare</code>.
+        </p>
+
+
+        <h2 id="derive">Deriving the password offline</h2>
+
+        <p>
+          Offline here is specific. The derivation touches no network, but it needs four inputs first, and three of them
+          come from the directory: the root key bytes from the oracle, the root key GUID and the GKID from
+          <code>msDS-ManagedPasswordID</code>, and the account SID from <code>objectSid</code>. Once those are collected,
+          the password is a fixed computation.
+        </p>
+
+        <p>
+          MS-GKDI specifies that computation, and KDSExtract reimplements it with the standard library only. The primitive
+          is SP 800-108 in counter mode with HMAC. Each block is keyed by the current key and fed a counter, a label, a
+          context, and the output length in bits:
+        </p>
+
+        <pre><code>msg = struct.pack("&gt;I", i) + label + b"\x00" + context + struct.pack("&gt;I", L)
+out += hmac.new(key, msg, hash_name).digest()</code></pre>
+
+        <p>
+          The context is the GkdiDerivationContext: the root key GUID in little-endian byte order, then the three signed
+          GKID indices, with a fixed gMSA security descriptor appended at the L1 stage. Serialization is load bearing. The
+          GUID is the little-endian form, the indices are signed 32-bit, and the security descriptor bytes are part of the
+          HMAC input. Any of these wrong produces a different key with no error.
+        </p>
+
+        <p>
+          Two labels drive the walk, both UTF-16LE and NUL terminated: <code>"KDS service"</code> for the seed keys and
+          <code>"GMSA PASSWORD"</code> for the password. The seed is built in three levels. The L0 seed comes from the
+          root key. The L1 seed starts at index 31 with the security descriptor in the context and walks down to the
+          target L1 index. The L2 seed, when present, walks from index 31 down to the target L2 index. That structure is
+          what lets a controller hand out keys bound to a time window without exposing the root key.
+        </p>
+
+        <p>
+          The last step applies the <code>"GMSA PASSWORD"</code> label with the account SID as context to produce 256
+          bytes, then runs the post-processing Windows uses: any UTF-16 code unit that is zero gets its low byte set to
+          one. The NT hash is MD4 of those UTF-16LE bytes, so KDSExtract ships its own MD4 and keeps the runtime
+          dependency free.
+        </p>
+
+        <figure>
+          <pre class="mermaid">
+flowchart TD
+    R["root key bytes<br/>(recovered via oracle)"]
+    C["GKID + GUID + SID<br/>(read from the directory)"]
+    R --> L0["L0 seed<br/>KDS service label"]
+    C --> L0
+    L0 --> L1["L1 seed from index 31<br/>+ gMSA security descriptor"]
+    L1 --> L1w["walk down to target L1"]
+    L1w --> L2["L2 walk 31 to target<br/>(if L2 present)"]
+    L2 --> SEED["seed key"]
+    SEED --> PW["GMSA PASSWORD label<br/>context = account SID<br/>256 bytes"]
+    PW --> NUL["NUL post-processing"]
+    NUL --> NT["UTF-16LE password<br/>MD4 gives the NT hash"]
+          </pre>
+          <figcaption>Everything above the seed key is collected from the directory. Everything below it is computation that needs no further access.</figcaption>
+        </figure>
+
+        <p>
+          The hash algorithm is a property of the root key, stored in <code>msKds-KDFParam</code>. That attribute is
+          itself confidential, so a normal user usually cannot read it. When it is readable the tool uses it. When it is
+          not, the tool derives two candidates, SHA512 first because Samba uses it for keys it creates, then SHA256
+          because that is the Windows default. The derivation produces a candidate per hash. It does not know which one is
+          right until something accepts it.
+        </p>
+
+        <p>
+          Computing a candidate is offline. Confirming it is the real password is not. The tool offers
+          <code>--verify-bind</code>, which tries an LDAP simple bind as the gMSA with the derived password. As written,
+          that check opens a fresh connection on the configured port, 389 by default, with no TLS and no fallback to
+          LDAPS, unlike the main client, which retries on 636 when Samba refuses a cleartext bind. Against a default Samba
+          that answers <code>strongerAuthRequired</code> to a cleartext simple bind, <code>--verify-bind</code> therefore
+          reports failure for a correct password, because the transport was rejected rather than the password. The
+          dependable confirmation in this project is the NT-hash comparison the lab performs. The client also does not
+          validate TLS certificates, which fits the self-signed lab controllers and makes it unsafe on an untrusted
+          network.
+        </p>
+
+        <p>
+          One more edge case shows up in the output. A small fraction of gMSA passwords contain unpaired UTF-16
+          surrogates, which cannot be represented as a valid simple-bind string. The tool reports that, still prints the
+          raw password bytes and the NT hash, and the lab verifies those against the controller.
+        </p>
+
+
+        <h2 id="lab">What the lab establishes</h2>
+
+        <p>
+          There are two levels of validation, and they prove different things.
+        </p>
+
+        <p>
+          The unit suite checks the GKDI math in isolation. It includes the twelve derivation vectors from Samba's own
+          <code>GkdiSelfTests</code>, covering SHA1, SHA256, SHA384, and SHA512 and both the L1 and L2 seed cases, and the
+          suite passes at commit <code>80a08cc</code>. That confirms the derivation against a reference, independent of
+          any network behavior.
+        </p>
+
+        <p>
+          The lab checks the full chain against a real controller. It builds two Samba controllers from upstream git tags,
+          4.24.4 and 4.24.5, provisions identical domains with a backdated KDS root key and a gMSA, then runs the tool
+          against both. The assertions that matter are not the verdict text. The lab recovers each root key through the
+          oracle and compares the bytes against the controller's own <code>msKds-RootKeyData</code> from
+          <code>samba-tool domain kds root-key list --show-secrets</code>, and it derives each gMSA password and compares
+          its NT hash against the controller's stored <code>unicodePwd</code> from
+          <code>samba-tool user getpassword</code>. The script exits non-zero unless every recovered key and every derived
+          hash matches. A passing run means the oracle reconstructed the controller's secret byte for byte and the offline
+          derivation reproduced the password the controller would hand out.
+        </p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>What the run checks</th>
+                <th>Samba 4.24.4 (vulnerable)</th>
+                <th>Samba 4.24.5 (fixed)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Injected greater-or-equal compare</td>
+                <td>Evaluates, oracle live</td>
+                <td>Rejected, <code>invalidAttributeSyntax</code> (21)</td>
+              </tr>
+              <tr>
+                <td>Oracle recovery of <code>msKds-RootKeyData</code></td>
+                <td>Matches the controller's <code>--show-secrets</code> value</td>
+                <td>Not reachable</td>
+              </tr>
+              <tr>
+                <td>Offline-derived gMSA NT hash</td>
+                <td>Matches the stored <code>unicodePwd</code></td>
+                <td>Not reachable</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>
+          The run also calls <code>kdsextract check</code> against each controller. That command sends an
+          operator-injection probe against an ordinary attribute, and when it can find a gMSA-referenced root key, a
+          second probe against the confidential attribute. On the vulnerable controller both evaluate; on the patched one
+          the first returns <code>invalidAttributeSyntax</code>. <code>check</code> is a quick verdict, not the proof. Its
+          one-line <code>VULNERABLE</code> string reads that confidential attributes participate even in the case where no
+          gMSA-referenced root key was available to run the second probe, so on its own it can claim more than it tested.
+          The per-probe detail is in the <code>--json</code> output. The result worth trusting is the byte-for-byte key
+          match and the NT-hash match, which the lab enforces by exit code rather than by reading a verdict string.
+        </p>
+
+
+        <h2 id="fix">Fixed versions and detection</h2>
+
+        <p>
+          The bug is fixed in Samba 4.24.5, 4.23.10, and 4.22.11. All AD DC releases from 4.0.0 are affected, and the
+          gMSA path specifically needs 4.21.0 or later, where gMSA support exists. There is no configuration workaround.
+          The fix validates the attribute name and escapes the value so the operator can no longer be injected, and marks
+          the <code>Compare</code> internal search as untrusted so the confidential-attribute checks apply again.
+        </p>
+
+        <p>
+          For detection, the injection has a recognizable shape: a burst of <code>Compare</code> requests on one
+          connection, attribute names ending in <code>&gt;</code>, against objects under <code>CN=Master Root Keys</code>.
+          On a patched controller those requests return <code>invalidAttributeSyntax</code>, which also distinguishes a
+          patched controller from a vulnerable one.
+        </p>
+
+
+        <h2 id="usage">Running it</h2>
+
+        <p>
+          The tool installs with its tests and has no runtime dependencies beyond the standard library. The README covers
+          options and output in full; the common path is:
+        </p>
+
+        <pre><code>pip install .
+kdsextract check     --host dc --user lowpriv@lab.local
+kdsextract dump-gmsa --host dc --user lowpriv@lab.local --name 'svcgmsa$'
+kdsextract pwn       --host dc --user lowpriv@lab.local</code></pre>
+
+        <p>
+          <code>check</code> prints one of two verdicts, which are the exact strings the lab matches against:
+        </p>
+
+        <pre><code>VULNERABLE (CVE-2026-58222): injected compare evaluates and confidential attributes participate
+NOT VULNERABLE: attribute operator injection rejected (invalidAttributeSyntax 21) -- fixed Samba</code></pre>
+
+        <p>
+          A trimmed <code>pwn</code> run, from the formatters at commit <code>80a08cc</code> with values abbreviated:
+        </p>
+
+        <pre><code>verdict: VULNERABLE
+
+root keys:
+  effd1d54-24d5-7a83-116d-f1619cfe0ae0 (gmsa-reference): 802da1146c207a75...
+
+gMSA svcgmsa$  (sid S-1-5-21-...)
+  root key effd1d54-24d5-7a83-116d-f1619cfe0ae0 hash=SHA512 gkid=364,15,14
+  password (utf-16 hex): 73764bf424123f6b...
+  NT hash: cf30eb5212fe22e696bea95f02010e05</code></pre>
+
+        <p>
+          The <code>pwn</code> text output lists each root key as <code>guid (source): hex</code> and does not print the
+          query count; that figure is in <code>--json</code> and in the <code>recover</code> command. The full lab runs
+          from <code>lab/run-demo.sh</code>, which builds both controllers and asserts the matches above.
+        </p>
+
+
+        <h2 id="credits">Credits</h2>
+
+        <p>
+          CVE-2026-58222 was reported by OpenAI Security Research, with the underlying bugs also reported by Andrew
+          Tridgell of the Samba Team and Tristan Madani of Talence Security, and patched by Stefan Metzmacher of SerNet
+          and the Samba team. The key derivation follows MS-GKDI and Samba's GPL-3.0 implementation, cross-checked against
+          Semperis GoldenGMSA. KDSExtract's own part is the <code>Compare</code> oracle and the byte recovery, the
+          dependency-free derivation that reproduces Samba's reference vectors, and the differential lab that ties a
+          recovered key to the controller's ground truth.
+        </p>
+
+      </div>
+    </article>
+  </div>
+{% endraw %}

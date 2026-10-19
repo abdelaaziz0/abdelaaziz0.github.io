@@ -1,0 +1,23 @@
+---
+layout: default
+---
+<div class="legacy-article content px-1">
+  <div class="legacy-article__bar"><span>{{ page.research_area | default: page.kind }}</span>{% if page.research_date %}<time datetime="{{ page.research_date }}">{{ page.research_date | date: '%d %B %Y' }}</time>{% endif %}{% if page.status == 'Pending' %}<span>{{ page.status }}</span>{% endif %}{% for tag in page.tags %}<span>{{ tag }}</span>{% endfor %}</div>
+  {{ content }}
+  {% if page.repository or page.cve or page.affected_technology or page.research_status %}
+  <dl class="research-facts">
+    {% if page.repository %}<div><dt>Repository</dt><dd><a href="{{ page.repository }}">{{ page.repository }}</a></dd></div>{% endif %}
+    {% if page.cve %}<div><dt>CVE</dt><dd>{{ page.cve }}</dd></div>{% endif %}
+    {% if page.affected_technology %}<div><dt>Affected technology</dt><dd>{{ page.affected_technology }}</dd></div>{% endif %}
+    {% if page.research_status %}<div><dt>Research status</dt><dd>{{ page.research_status }}</dd></div>{% endif %}
+    {% if page.external_references %}<div><dt>References</dt><dd>{% for reference in page.external_references %}<a href="{{ reference.url }}">{{ reference.title }}</a>{% unless forloop.last %}, {% endunless %}{% endfor %}</dd></div>{% endif %}
+  </dl>
+  {% endif %}
+</div>
+{% if page.legacy_mermaid %}
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.16.1/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: false, theme: 'dark', securityLevel: 'strict' });
+  await mermaid.run({ querySelector: '.legacy-article pre.mermaid' });
+</script>
+{% endif %}

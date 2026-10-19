@@ -1,0 +1,524 @@
+---
+layout: legacy-article
+title: KerbState
+description: 'Deep dive into KerbState: reconstructing a process address space from a raw guest core by scanning for page tables and self-calibrating EPROCESS offsets, locating Kerberos state across Windows builds with a rip-relative signature, scoring tickets by structural evidence, and exporting them as kirbi and ccache.'
+kind: research
+research_area: Windows Internals
+status: Published
+lang: en
+toc: false
+legacy_mermaid: true
+project: KerbState
+featured: true
+research_status: Engine and kirbi/ccache export checked by the unit suite on a synthetic fixture (built and run at commit 048c77a); the lab-derived win11-26200 profile's live DC acceptance is the author's documented lab result, not reproduced in this review
+external_references:
+  - title: RFC 4120 (Kerberos, KRB-CRED)
+    url: https://www.rfc-editor.org/rfc/rfc4120
+  - title: pypykatz
+    url: https://github.com/skelsec/pypykatz
+---
+{% raw %}
+<div class="legacy-main container">
+    <a href="/tools/" class="back-link"><i class="fas fa-arrow-left"></i> Back to tools</a>
+
+    <article>
+      <section class="challenge-card">
+        <span class="challenge-platform"><i class="fas fa-memory"></i> Windows internals &middot; Kerberos &middot; Memory forensics</span>
+        <h1 class="challenge-title">KerbState</h1>
+        <p class="challenge-subtitle">
+          KerbState rebuilds Kerberos ticket caches from a raw hypervisor memory image. It takes a guest core, scans
+          physical memory to reconstruct the virtual address space the kernel was using, carves an LSASS minidump, finds
+          the Kerberos state inside a randomly based DLL, and reads every session and ticket. No code runs in the guest,
+          and the engine holds no Windows offsets. Everything build-specific lives in JSON profiles derived in a lab.
+          This is the long version: the parts that actually made it possible.
+        </p>
+        <div class="challenge-meta">
+          <span class="meta-badge category">C++20</span>
+          <span class="meta-badge category">Windows Internals</span>
+          <span class="meta-badge tag">Page tables</span>
+          <span class="meta-badge tag">EPROCESS</span>
+          <span class="meta-badge tag">Kerberos</span>
+          <span class="meta-badge tag">LSASS</span>
+          <span class="meta-badge tag">Minidump</span>
+          <span class="meta-badge tag">kirbi / ccache</span>
+        </div>
+      </section>
+
+      <nav class="toc" aria-label="Table of contents">
+        <div class="toc-title">Contents</div>
+        <ol>
+          <li><a href="#problem">The problem, stated precisely</a></li>
+          <li><a href="#core">A guest core is just physical memory</a></li>
+          <li><a href="#pml4">Bootstrapping: finding page tables with no map</a></li>
+          <li><a href="#system">Finding SYSTEM and calibrating offsets</a></li>
+          <li><a href="#walk">Walking to LSASS and carving a minidump</a></li>
+          <li><a href="#locator">Locating Kerberos across builds without ASLR fighting back</a></li>
+          <li><a href="#structure">From a root to tickets, by structure not content</a></li>
+          <li><a href="#model">What a ticket records</a></li>
+          <li><a href="#export">Export, and the safety boundary</a></li>
+          <li><a href="#validation">What is validated</a></li>
+          <li><a href="#limits">Limits</a></li>
+          <li><a href="#usage">Running it</a></li>
+          <li><a href="#credits">Credits</a></li>
+        </ol>
+      </nav>
+
+      <div class="article-content">
+
+        <h2 id="problem">The problem, stated precisely</h2>
+
+        <p>
+          Reading Kerberos tickets the usual way means running code in the target: open LSASS, use its loaded module
+          layout, let the OS translate addresses for you. KerbState removes all three. The input is a full guest core
+          taken at the hypervisor with <code>VBoxManage debugvm &lt;vm&gt; dumpvmcore</code>, which is a snapshot of
+          physical RAM. There is no live process, no address translation, and no loaded-module metadata handed to you.
+        </p>
+
+        <p>
+          Three concrete obstacles follow from that, and the rest of this article is how each one is solved. You have
+          physical pages but no virtual address space, so you cannot follow a single pointer. You need to find LSASS, but
+          the structure that lists processes lives at build-specific offsets you are not allowed to hardcode. And once you
+          reach <code>kerberos.dll</code>, the state you want is a global whose address is randomized at every boot. The
+          code below is from commit <code>048c77a</code>.
+        </p>
+
+
+        <h2 id="core">A guest core is just physical memory</h2>
+
+        <p>
+          A VirtualBox core is an ELF <code>ET_CORE</code> file. Its <code>PT_LOAD</code> program headers describe which
+          physical ranges were dumped: each one gives a physical address (<code>p_paddr</code>), a size, and the file
+          offset where those bytes live. KerbState reads the headers, keeps the ranges sorted, and serves physical reads
+          by binary-searching the range that contains an address.
+        </p>
+
+        <pre><code>// one PT_LOAD becomes one physical range
+img-&gt;ranges_.push_back({p_paddr, p_filesz, p_offset});
+...
+// read_pa: find the range whose end is just past `cur`, copy from the file
+auto it = std::upper_bound(range_ends_.begin(), range_ends_.end(), cur);</code></pre>
+
+        <p>
+          That is the whole physical layer: given a physical address, return bytes. Everything else is reconstructing the
+          virtual world on top of it.
+        </p>
+
+        <p>
+          Virtual translation on x64 is a four-level walk. A directory table base (DTB, the value CR3 holds) points at a
+          top-level table (PML4); nine bits of the virtual address index each level down to the page. KerbState implements
+          it directly, including large pages, where a set <code>0x80</code> bit at an upper level ends the walk early:
+        </p>
+
+        <pre><code>for (int level = 4; level &gt;= 1; --level) {
+    const int shift = 12 + 9 * (level - 1);
+    const std::uint32_t idx = (va &gt;&gt; shift) &amp; 0x1FF;
+    std::uint64_t pte = read 8 bytes at (table + idx*8);
+    if (!(pte &amp; 1) &amp;&amp; !(pte &amp; 0x800)) return nullopt;   // not present, not transition
+    if ((pte &amp; 0x80) &amp;&amp; level &gt; 1) {                      // large page
+        const std::uint64_t mask = (1ULL &lt;&lt; shift) - 1;
+        return (pte &amp; PFN_MASK &amp; ~mask) | (va &amp; mask);
+    }
+    if (level == 1) return (pte &amp; PFN_MASK) | (va &amp; 0xFFF);
+    table = pte &amp; PFN_MASK;
+}</code></pre>
+
+        <p>
+          The catch is circular: to translate anything you need a DTB, and the DTB you want belongs to a process you have
+          not found yet, because finding processes needs translation. The next two sections break that loop.
+        </p>
+
+
+        <h2 id="pml4">Bootstrapping: finding page tables with no map</h2>
+
+        <p>
+          The way out is that a page table has a recognizable shape in raw memory, so you can find DTBs without any
+          address translation at all. KerbState scans every physical 4 KB page and tests two properties of a PML4.
+        </p>
+
+        <p>
+          First, density. The upper half of a PML4 (entries 0x100 to 0x1FF) is the kernel half, which is shared and
+          heavily populated on a live system, so a real PML4 has many present entries there. KerbState requires at least
+          40. Second, the self-reference. Windows maps the PML4 into its own address space, so one of its entries points
+          back at the physical page that holds it. That self-referencing entry is the signature that separates a page
+          table from any other dense page:
+        </p>
+
+        <pre><code>int present = 0;
+for (int e = 0x100; e &lt; 0x200; ++e)           // kernel half
+    if (entry[e] &amp; 1) ++present;
+if (present &lt; 40) continue;
+
+bool selfref = false;
+for (int e = 0x100; e &lt; 0x200; ++e)           // points at its own physical page
+    if ((entry[e] &amp; 1) &amp;&amp; (entry[e] &amp; PFN_MASK) == page_pa) selfref = true;
+if (selfref) dtbs.insert(page_pa);</code></pre>
+
+        <p>
+          That returns a set of candidate DTBs, one per live process. To confirm a candidate is a real DTB and not a false
+          positive, KerbState translates one fixed address through it: the kernel alias of
+          <code>KUSER_SHARED_DATA</code> at <code>0xFFFFF78000000000</code>, a structure mapped at the same kernel virtual
+          address in every process. If the translation lands on a page that contains the <code>NtSystemRoot</code> string
+          (<code>\SystemRoot</code> on older builds, <code>C:\WINDOWS</code> on newer ones) in UTF-16, the DTB is real and
+          its kernel half is intact. A self-referencing page that fails this test is discarded.
+        </p>
+
+
+        <h2 id="system">Finding SYSTEM and calibrating offsets</h2>
+
+        <p>
+          With valid DTBs in hand, KerbState still needs the process list, and that is where hardcoded offsets would
+          normally creep in. It avoids them with a trick: the DTB it just found for the SYSTEM process is also stored
+          inside the SYSTEM <code>EPROCESS</code> object, at <code>KPROCESS.DirectoryTableBase</code>, which sits at a
+          stable <code>+0x28</code> on x64. So it scans physical memory for a 64-bit value equal to one of the known PML4
+          physical addresses, and treats the location <code>0x28</code> bytes before it as a candidate <code>EPROCESS</code>.
+        </p>
+
+        <p>
+          A match on the DTB alone is weak, so each candidate is validated by structure. The SYSTEM process has the image
+          name <code>System</code>, a unique process id of 4, and <code>ActiveProcessLinks</code> whose forward and
+          backward pointers are kernel addresses. KerbState checks all three in a bidirectional window, because the field
+          order around the DTB differs between builds:
+        </p>
+
+        <pre><code>// DTB value found at i; EPROCESS base candidate = i - 0x28
+if (memcmp(ep + n, "System\0", 7) == 0) have_name = true;   // name in 0x200..0x700
+if (rd(ep, po) == 4 &amp;&amp; is_kptr(rp(ep, po+8)) &amp;&amp; is_kptr(rp(ep, po+16)))
+    have_pid = true;                                        // PID 4 + kernel links
+if (have_name &amp;&amp; have_pid &amp;&amp; dtb_maps_kusd(img, dtb)) accept();</code></pre>
+
+        <p>
+          Once SYSTEM is confirmed, the same bytes are used to calibrate the three offsets the walk needs,
+          <code>UniqueProcessId</code>, <code>ActiveProcessLinks</code>, and the image name, by locating them inside the
+          known-good SYSTEM object rather than reading them from a table. This is the piece that makes the engine
+          build-independent: a new Windows build changes those offsets, and KerbState rediscovers them from the process
+          it already trusts. The approach follows the kslsass technique for EPROCESS discovery.
+        </p>
+
+        <p>
+          The only genuinely fixed Windows constant in this whole path is <code>KPROCESS.DirectoryTableBase</code> at
+          <code>+0x28</code>, which is an architecture property of how the scheduler stores CR3, not a build detail.
+        </p>
+
+
+        <h2 id="walk">Walking to LSASS and carving a minidump</h2>
+
+        <p>
+          From SYSTEM, KerbState walks <code>ActiveProcessLinks</code> as a doubly-linked list through kernel virtual
+          addresses, translating each node with the SYSTEM DTB and reading the next <code>EPROCESS</code>. It guards the
+          walk with a visited set and a bound, and stops when the list returns to the SYSTEM entry. For each process it
+          reads the process id, the per-process DTB at <code>+0x28</code>, and the image name, and matches the target
+          (<code>lsass.exe</code>).
+        </p>
+
+        <figure>
+          <pre class="mermaid">
+flowchart TD
+    A["ELF guest core<br/>physical ranges"] --> B["scan 4 KB pages for PML4s<br/>kernel-half density + self-reference"]
+    B --> C["validate each DTB<br/>translate KUSER_SHARED_DATA alias"]
+    C --> D["scan for DTB value at EPROCESS+0x28<br/>confirm System + PID 4 + kernel links"]
+    D --> E["calibrate PID / links / name offsets<br/>from the SYSTEM object"]
+    E --> F["walk ActiveProcessLinks<br/>match lsass.exe, take its DTB"]
+    F --> G["enumerate user VA ranges<br/>+ PEB/Ldr module list"]
+    G --> H["carve MDMP<br/>SystemInfo + ModuleList + Memory64List"]
+          </pre>
+          <figcaption>No code runs in the guest. Every step reconstructs something the kernel would have known, starting from raw physical pages.</figcaption>
+        </figure>
+
+        <p>
+          Finding the loaded modules needs the process environment block (PEB), which the <code>EPROCESS</code> points at.
+          Rather than hardcode that field, KerbState probes: it scans the <code>EPROCESS</code> for a user-mode pointer
+          that, dereferenced through the process's own DTB, lands on a plausible PEB, one whose <code>Ldr</code> and
+          <code>ImageBaseAddress</code> are themselves user pointers. From the PEB it walks
+          <code>InLoadOrderModuleList</code> to collect each module's base, size, name, and the PE timestamp and checksum
+          read from the image header. Those four fields are exactly what a profile later matches
+          <code>kerberos.dll</code> on.
+        </p>
+
+        <p>
+          To carve the dump it enumerates the process's user address space by walking its page tables (PML4 entries 0 to
+          255), handling 1 GB and 2 MB large pages, and merging contiguous regions. Then it writes a real Windows
+          minidump with three streams: a <code>SystemInfoStream</code>, a <code>ModuleListStream</code> built from the Ldr
+          walk, and a <code>Memory64ListStream</code> that carries the actual page contents. Writing a standard MDMP rather
+          than a private format means the same artifact is readable by ordinary tooling and by KerbState's own parser,
+          which treats the dump as an <code>AddressSpace</code> that maps a virtual address back to a file offset and
+          reports whether each read is complete, partial, or unmapped.
+        </p>
+
+
+        <h2 id="locator">Locating Kerberos across builds without ASLR fighting back</h2>
+
+        <p>
+          Now the address space is LSASS, and the target is the Kerberos package state: a global inside
+          <code>kerberos.dll</code> that heads the list of logon sessions. Two things are randomized. The DLL base moves
+          at every boot, and the global's address moves with it. Hardcoding a virtual address is useless, and so is a
+          file offset, because the loaded image is relocated.
+        </p>
+
+        <p>
+          The anchor that survives both is a rip-relative instruction. Somewhere in the code, a
+          <code>lea rcx, [rip+disp32]</code> (<code>48 8d 0d ?? ?? ?? ??</code>) loads the address of that global. The
+          displacement is relative to the instruction that uses it, so it is stable for a given build even though the
+          absolute address is not. A profile carries the byte signature, the position of the <code>disp32</code> operand
+          inside it, and the instruction length. KerbState scans the module for the signature and resolves each hit:
+        </p>
+
+        <pre><code>target = instruction_va + instruction_length + rel32_at(instruction_va + disp_offset)</code></pre>
+
+        <p>
+          A byte pattern can match by coincidence, so a resolved hit is not trusted on its own. The profile also carries an
+          ASCII tag expected a fixed distance from the list head; for the Windows 11 profile that tag is the string
+          <code>Kerberos</code> (<code>4b 65 72 62 65 72 6f 73</code>) at the profile's <code>tag_offset</code>. A hit
+          whose tag does not verify is penalized rather than used.
+        </p>
+
+        <p>
+          None of this is a single yes-or-no. Every step contributes signed evidence to a candidate score, and candidates
+          are ranked, so a weak or ambiguous image degrades gracefully instead of silently picking the wrong root:
+        </p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Evidence</th><th>Weight</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>module-scoped signature matched</td><td>+25</td></tr>
+              <tr><td>rel32 target resolved</td><td>+15</td></tr>
+              <tr><td>embedded list head is mapped</td><td>+15</td></tr>
+              <tr><td>locator ASCII tag verified</td><td>+25</td></tr>
+              <tr><td>session list walk bounded and reciprocal</td><td>+25</td></tr>
+              <tr><td>every session decodes a plausible LogonId</td><td>+25</td></tr>
+              <tr><td>rel32 unresolved / head unmapped / tag mismatch</td><td>negative</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>
+          The profile also selects the session container shape. Older Windows kept logon sessions in an embedded
+          doubly-linked list; modern builds use an AVL table. KerbState has a bounded, cycle-checked walker for each, and
+          the locator for the AVL case resolves the rel32 to the table root and dereferences it. Either way the next step
+          is the same: a set of candidate session nodes, each still to be confirmed.
+        </p>
+
+        <figure>
+          <pre class="mermaid">
+flowchart TD
+    A["match kerberos.dll<br/>name, timestamp, size, checksum"]
+    --> B["signature scan<br/>lea rcx, [rip+disp32]"]
+    --> C["resolve rel32<br/>instr_va + len + disp32"]
+    --> D["confirm ASCII tag<br/>Kerberos at tag_offset"]
+    --> E["session list head"]
+    E --> F["embedded linked list<br/>or AVL table (bounded walk)"]
+    F --> G["candidate sessions"]
+          </pre>
+          <figcaption>The root is found by a relocation-stable instruction and confirmed by a tag, never by matching a principal name or ticket value.</figcaption>
+        </figure>
+
+
+        <h2 id="structure">From a root to tickets, by structure not content</h2>
+
+        <p>
+          A candidate session is confirmed the same way the root is: by structural consensus, never by matching known
+          content. Matching on a username you already know would only prove the offset works on the machine you derived
+          it from. KerbState instead requires several independent structural facts to line up.
+        </p>
+
+        <p>
+          Each outer session carries a LogonId discovered at runtime. The semantic session for that LogonId is scored by
+          whether the LUID appears at the expected offset, whether all three ticket-cache list heads
+          (the lists pypykatz labels TGS, CLIENT, and TGT) are structurally valid with mapped, reciprocally linked
+          members, whether the UPN field decodes as bounded UTF-16 in <code>user@realm</code> form, and whether at least
+          one list member parses as a plausible ticket:
+        </p>
+
+        <pre><code>if (luid_at(cand, luid_off) != luid) return {};              // wrong session
+add_ev(hit, 30, "runtime-discovered LUID present at layout offset");
+for each of the 3 cache lists:
+    if (list head structurally valid)      add_ev(hit, 15, ...);
+    if (members mapped)                    add_ev(hit,  5, ...);
+    if (back-links reciprocal)             add_ev(hit,  5, ...);
+if (upn decodes &amp;&amp; looks like user@realm) add_ev(hit, 10..15, ...);
+if (any member is a plausible ticket)      add_ev(hit, ...);</code></pre>
+
+        <p>
+          A ticket is plausible when its server name decodes, its start and end times are ordered and fall in a credible
+          FILETIME window, and its encryption type is a known Kerberos etype. Only after those pass does KerbState read
+          the metadata fields and score them individually.
+        </p>
+
+
+        <h2 id="model">What a ticket records</h2>
+
+        <p>
+          The output is not a flat dump, because a cache enumeration can return ticket metadata while the reusable
+          credential lives in a separate object, and those deserve separate confidence. Each ticket carries four domains
+          rather than one number: cache membership, metadata, credential relationship, and export readiness. The
+          <code>inspect</code> output shows the breakdown, the descriptors, and the raw provenance:
+        </p>
+
+        <pre><code>[0x12a93f] CORP.LOCAL\alice  confidence=90
+  krbtgt/CORP.LOCAL @ CORP.LOCAL
+    etype: AES256-CTS-HMAC-SHA1-96 (18)
+    validity: 2026-10-07T10:00:00Z -&gt; 2026-10-07T20:00:00Z  renew=2026-10-14T10:00:00Z
+    confidence: 80  [cache=45 metadata=85 relationship=90 readiness=100]
+      opaque-ticket: present len=96 source=0x10002200 sha256=f7b1b134...
+      key-state: present type=AES256-... len=32 source=0x10002500 sha256=0477fd8e...
+      export-enabled: no (research safety boundary)
+    raw observations:
+      +16 client_ptr=0x10001000 mapped=yes  principal string reference
+      +88 opaque_ticket_ptr=0x10002200 mapped=yes  opaque credential artifact reference
+      +104 key_ptr=0x10002500 mapped=yes  key-state reference
+    validation evidence:
+      +10 ticket object is fully mapped       +10 ticket back-link matches
+      +8 client decoded                       +8 client realm decoded
+      +8 server decoded                       +8 server realm decoded
+      +12 ticket validity window plausible    +8 renewal time plausible
+      +8 known Kerberos encryption type</code></pre>
+
+        <p>
+          The reusable material never appears as plaintext in this model. The opaque-ticket descriptor and the key-state
+          descriptor each record present-or-not, a source virtual address, a length, a type where it applies, and a
+          SHA-256 fingerprint. Two snapshots can be diffed by stable fingerprints without printing a key, and the model is
+          aware of protected key representations (plain buffer, LSA-protected, LSAISO, encrypted LSAISO) so a key that is
+          not a plain buffer is labeled rather than misread. The raw observations are the provenance trail: a label, the
+          offset inside the profile-specific object, the value, and whether the referenced target is actually mapped. In
+          the bundled fixture those offsets are offsets in a synthetic structure, not Windows LSASS offsets.
+        </p>
+
+        <p>
+          Keeping the four domains separate is the reason a single score is not enough. A ticket can have clean metadata
+          and a confirmed key relationship while its cache-membership evidence stays low, and collapsing that into one
+          number would hide which half is uncertain.
+        </p>
+
+
+        <h2 id="export">Export, and the safety boundary</h2>
+
+        <p>
+          Export turns a reconstructed ticket into files an attacker toolchain loads: a <code>.kirbi</code>, which is an
+          RFC 4120 KRB-CRED in DER, and an MIT <code>.ccache</code> v4. Both encoders are hand-rolled and self-contained.
+          The DER side is a small TLV builder, with context tags, integers that pad a leading sign bit, and KerberosTime
+          values formatted as GeneralizedTime through a civil-date conversion of the FILETIME:
+        </p>
+
+        <pre><code>std::string der(tag, content)  { tag + length(content) + content; }
+std::string ctx(n, content)    { return der(0xA0 | n, content); }      // [n] context
+// KRB-CRED: [APPLICATION 22] of { pvno, msg-type 22, tickets, enc-part }
+return der(0x76, der(0x30, body));
+// each Ticket: [APPLICATION 1] of { tkt-vno 5, realm, sname, enc-part }
+return der(0x61, der(0x30, body));</code></pre>
+
+        <p>
+          The ccache side writes the MIT v4 header, a default principal, and one credential with the keyblock, the four
+          timestamps as Unix seconds, the flags, and the DER ticket length-prefixed, all big-endian. The comments note
+          both layouts were byte-verified, the ccache against <code>kinit</code> output and the kirbi against the lab DC.
+        </p>
+
+        <p>
+          Export is gated in two independent places. A ticket is only exportable when its export material (the KDC-encrypted
+          ticket blob, the session key, and the kvno) was captured, and the command refuses entirely unless the profile
+          document opts in with <code>"export": true</code>. The bundled synthetic profile keeps it off on purpose, which
+          is why <code>inspect</code> prints <code>export-enabled: no (research safety boundary)</code> for the fixture.
+          The lab-derived win11-26200 profile opts in, because it was built to validate the export path.
+        </p>
+
+        <p>
+          That is the one claim to state carefully. The win11-26200 profile notes record that every exported ticket from
+          the lab, TGTs obtained through TGS exchanges and cifs tickets through full SMB authentication, was accepted by
+          the lab domain controller, and that corrupted-cipher and wrong-session-key controls were rejected. That is the
+          author's documented lab result, and it is what makes the headline, reconstructed tickets accepted by a real DC,
+          true for that profile. I did not reproduce it in this review, because it needs the Windows lab and the DC.
+        </p>
+
+
+        <h2 id="validation">What is validated</h2>
+
+        <p>
+          The engine and the export encoders are covered by the unit suite, and it passes. I built the project with
+          GCC 15 at commit <code>048c77a</code> and ran the tests: they parse the synthetic fixtures through the same
+          session, cache, and ticket code the real profiles use, and exercise the export path directly, building a
+          <code>krbtgt</code> and a cifs ticket from the fixture and writing both artifacts (a 479-byte kirbi and a
+          407-byte ccache in one case) with their key fingerprints. That checks the parser and the kirbi and ccache
+          encoders against a known structure, independent of any Windows image.
+        </p>
+
+        <p>
+          Two things are deliberately not in that suite, and the article does not treat them as if they were. The
+          guest-core to LSASS walk is verified by reading the code, not by running it against a real Windows core here,
+          since none was available. The DC-acceptance result is the author's lab validation, recorded in the profile and
+          the project notes, not something reproduced in this review. The division is intentional: the parts that can be
+          checked without a Windows lab are unit-tested, and the parts that need one are labeled as lab results.
+        </p>
+
+        <p>
+          The repository is also careful about what it ships. The profiles carry structural offsets only. The
+          win11-26200 document states that no LUID, principal, realm, SPN, ticket count, or timestamp appears in it, and
+          the fixture offsets are synthetic. The normalized model stores fingerprints, not key bytes. For a tool that
+          reads credentials, none of that is cosmetic: it keeps the published artifact from being a recipe against a
+          specific production build.
+        </p>
+
+
+        <h2 id="limits">Limits</h2>
+
+        <ul>
+          <li><strong>Input.</strong> The acquisition path is a hypervisor guest core, taken here with VirtualBox. It is
+            not a live-host agent and not a generic crash-dump reader.</li>
+          <li><strong>Profiles are per build.</strong> A profile is tied to a <code>kerberos.dll</code> version. A new
+            Windows build needs a new profile derived in a lab; the engine self-calibrates EPROCESS offsets but does not
+            guess Kerberos layout.</li>
+          <li><strong>Pagefile-backed pages.</strong> The walk reconstructs only mapped physical pages; paged-out regions
+            read back as unmapped, which the model reports rather than hides.</li>
+          <li><strong>Export is opt-in.</strong> Only a profile that sets <code>"export": true</code> produces artifacts,
+            and only for tickets whose export material is present.</li>
+          <li><strong>No production secrets shipped.</strong> The bundled profiles are structural and the fixture is
+            synthetic, so the repository alone does not read a real host.</li>
+        </ul>
+
+
+        <h2 id="usage">Running it</h2>
+
+        <p>
+          The build is CMake and C++20. On GCC 15 two libstdc++ warnings in the fixture writers have to be demoted:
+        </p>
+
+        <pre><code>cmake -S . -B build
+cmake --build build -j
+ctest --test-dir build --output-on-failure
+# GCC 15:
+# -DCMAKE_CXX_FLAGS='-Wno-error=maybe-uninitialized -Wno-error=array-bounds'</code></pre>
+
+        <p>
+          Carve an LSASS minidump from a guest core, inspect it, check it against <code>klist</code>, and export when the
+          profile opts in:
+        </p>
+
+        <pre><code>kerbstate rawwalk core.elf --image lsass.exe -o lsass.dmp
+kerbstate inspect lsass.dmp --profile-file profiles/win11-26200.json [--json]
+kerbstate lab verify lsass.dmp --profile-file profiles/win11-26200.json --expect manifest.json
+kerbstate export lsass.dmp --profile-file profiles/win11-26200.json -o artifacts/</code></pre>
+
+        <p>
+          The remaining commands are <code>kerbstate profiles</code> to list bundled profiles, and
+          <code>kerbstate lab module</code>, <code>lab diff</code>, and <code>lab template</code> for module identity,
+          snapshot diffs, and a fresh profile skeleton. The exported artifacts hold live credentials, so they belong in
+          the lab.
+        </p>
+
+
+        <h2 id="credits">Credits</h2>
+
+        <p>
+          The EPROCESS discovery and offset self-calibration follow the kslsass technique. The Kerberos parsing patterns,
+          the version-selected template, the module signature, and the linked-list versus AVL session split, come from
+          studying pypykatz; the Windows offsets do not, and KerbState is explicit about adopting the patterns and
+          deriving its own structural profiles in a lab. The export formats follow RFC 4120 for KRB-CRED and the MIT
+          ccache v4 layout. The physical-memory page-table walk, the PML4 and KUSER_SHARED_DATA bootstrap, the
+          relocation-stable locator, the evidence-weighted confidence model, and the fingerprint-only credential
+          descriptors are the project's own.
+        </p>
+
+      </div>
+    </article>
+  </div>
+{% endraw %}

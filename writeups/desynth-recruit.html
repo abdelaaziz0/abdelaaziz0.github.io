@@ -1,53 +1,19 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DeSynth Recruit - HTB CTF Writeup | Abdelaaziz Belkhair</title>
-    <meta name="description"
-        content="HTB CTF Writeup: DeSynth Recruit - Client-Side Desync via Werkzeug 2.1.0 to achieve XSS as admin, read system files, compute the debug PIN, and get RCE.">
-  <link rel="canonical" href="https://abdelaaziz0.github.io/writeups/desynth-recruit.html">
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-  <link rel="icon" href="/assets/img/favicon-32.png" sizes="32x32" type="image/png">
-  <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://abdelaaziz0.github.io/writeups/desynth-recruit.html">
-  <meta property="og:title" content="DeSynth Recruit - HTB CTF Writeup | Abdelaaziz Belkhair">
-  <meta property="og:description" content="HTB CTF Writeup: DeSynth Recruit - Client-Side Desync via Werkzeug 2.1.0 to achieve XSS as admin, read system files, compute the debug PIN, and get RCE.">
-  <meta property="og:image" content="https://abdelaaziz0.github.io/assets/img/og-card.jpg">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="Abdelaaziz Belkhair - Pentest Web et Active Directory">
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="DeSynth Recruit - HTB CTF Writeup | Abdelaaziz Belkhair">
-  <meta name="twitter:description" content="HTB CTF Writeup: DeSynth Recruit - Client-Side Desync via Werkzeug 2.1.0 to achieve XSS as admin, read system files, compute the debug PIN, and get RCE.">
-  <meta name="twitter:image" content="https://abdelaaziz0.github.io/assets/img/og-card.jpg">
-  <meta name="twitter:image:alt" content="Abdelaaziz Belkhair - Pentest Web et Active Directory">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
-        integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg=="
-        crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="../assets/css/writeup.css">
-</head>
-
-<body>
-    <header>
-        <nav>
-            <a href="../index.html" class="logo" aria-label="Accueil Abdelaaziz Belkhair"><img src="../assets/img/anubis-mark.webp" alt="Logo Anubis Abdelaaziz Belkhair"></a>
-      <ul class="nav-links">
-        <li><a href="../index.html#about">Profil</a></li>
-        <li><a href="../projects.html">Travail</a></li>
-        <li><a href="../writeups.html" class="active">Writeups</a></li>
-        <li><a href="../blog.html">Articles</a></li>
-        <li><a href="../index.html#experience">Expérience</a></li>
-        <li><a href="../index.html#contact">Contact</a></li>
-        <li><a href="../cv.pdf" download>CV</a></li>
-      </ul>
-        </nav>
-    </header>
-
-    <main class="container">
+---
+layout: legacy-article
+media_subpath: /writeups
+title: DeSynth Recruit
+description: 'HTB CTF Writeup: DeSynth Recruit - Client-Side Desync via Werkzeug 2.1.0 to achieve XSS as admin, read system
+  files, compute the debug PIN, and get RCE.'
+kind: writeup
+research_area: Web Security
+status: Published
+lang: en
+toc: false
+research_date: '2026-02-19'
+date: '2026-02-19'
+---
+{% raw %}
+<div class="legacy-main container">
         <a href="../writeups.html" class="back-link"><i class="fas fa-arrow-left"></i> Retour aux analyses</a>
 
         <article>
@@ -965,13 +931,5 @@ ngrok http 5000
 
             </div>
         </article>
-    </main>
-
-    <footer>
-        <div class="container">
-            <p>&copy; 2026 Abdelaaziz Belkhair</p>
-        </div>
-    </footer>
-</body>
-
-</html>
+    </div>
+{% endraw %}

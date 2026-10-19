@@ -1,0 +1,32 @@
+---
+layout: compress
+permalink: /feed.xml
+---
+{% assign research_pages = site.pages | where: 'kind', 'research' | where: 'status', 'Published' %}
+{% assign writeup_pages = site.pages | where: 'kind', 'writeup' | where: 'status', 'Published' %}
+{% assign publications = research_pages | concat: writeup_pages | concat: site.posts | where_exp: 'item', 'item.date' | sort: 'date' | reverse %}
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <id>{{ '/' | absolute_url }}</id>
+  <title>{{ site.title | xml_escape }}</title>
+  <subtitle>{{ site.description | xml_escape }}</subtitle>
+  <updated>{{ site.time | date_to_xmlschema }}</updated>
+  <author><name>{{ site.social.name | xml_escape }}</name><uri>{{ '/' | absolute_url }}</uri></author>
+  <link rel="self" type="application/atom+xml" href="{{ page.url | absolute_url }}" />
+  <link rel="alternate" type="text/html" href="{{ '/' | absolute_url }}" />
+  <generator uri="https://jekyllrb.com/" version="{{ jekyll.version }}">Jekyll</generator>
+  {% for item in publications limit: 20 %}
+  {% assign item_url = item.url | absolute_url %}
+  <entry>
+    <title>{{ item.title | xml_escape }}</title>
+    <link href="{{ item_url }}" rel="alternate" type="text/html" />
+    <id>{{ item_url }}</id>
+    <published>{{ item.date | date_to_xmlschema }}</published>
+    <updated>{{ item.last_modified_at | default: item.date | date_to_xmlschema }}</updated>
+    <author><name>{{ site.social.name | xml_escape }}</name></author>
+    <summary type="text">{{ item.description | default: item.title | xml_escape }}</summary>
+    {% if item.research_area %}<category term="{{ item.research_area | xml_escape }}" />{% endif %}
+    {% for tag in item.tags %}<category term="{{ tag | xml_escape }}" />{% endfor %}
+    <content type="html" src="{{ item_url }}" />
+  </entry>
+  {% endfor %}
+</feed>
